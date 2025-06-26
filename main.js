@@ -19,6 +19,143 @@ class Helpers {
 	}
 }
 
+async function getUsersForDataset() {
+	var users = [];
+	var offset = 0;
+	const limit = 100;
+	var count;
+	var moreData = true;
+	const url = `/api/identity/v1/users/search?explain=false&cacheBuster=${new Date().getTime()}`;
+	var body = {
+		showCount: true,
+		count: false,
+		includeDeleted: true,
+		onlyDeleted: false,
+		includeSupport: true,
+		limit: limit,
+		offset: offset,
+		sort: {
+			field: 'created',
+			order: 'ASC',
+		},
+		filters: [],
+		ids: [],
+		attributes: [
+			'id',
+			'displayName',
+			'department',
+			'userName',
+			'emailAddress',
+			'phoneNumber',
+			'deskPhoneNumber',
+			'title',
+			'timeZone',
+			'hireDate',
+			'modified',
+			'created',
+			'alternateEmail',
+			'employeeLocation',
+			'employeeNumber',
+			'employeeId',
+			'locale',
+			'roleId',
+			'reportsTo',
+			'isAnonymous',
+			'isSystemUser',
+			'isPending',
+			'isActive',
+			'invitorUserId',
+			'lastActivity',
+		],
+		parts: ['DETAILED', 'GROUPS', 'ROLE', 'MINIMAL'],
+	};
+	while (moreData) {
+		const response = await codeengine.sendRequest('POST', url, body);
+
+		if (response.users && response.users.length > 0) {
+			users.push(...response.users);
+			count += response.users.length;
+			// Increment offset to get next page
+			offset += limit;
+			body.offset = offset;
+
+			if (count >= response.count) {
+				moreData = false;
+			}
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
+		}
+	}
+	return users;
+}
+
+async function uploadUsersToDataset(users, dataset) {
+	const transformedUsers = users.map((user) => {
+		user.attributes.forEach((attribute) => {
+			const key = attribute.key;
+			const value = attribute.values[0]; // Assuming values array always has one element
+			user[key] = value;
+		});
+		delete user.attributes;
+		delete user.role;
+	});
+
+	const csvString = [
+		[
+			'id',
+			'displayName',
+			'roleId',
+			'emailAddress',
+			'userName',
+			'timeZone',
+			'modified',
+			'created',
+			'isAnonymous',
+			'isSystemUser',
+			'isPending',
+			'isActive',
+			'avatarKey',
+		],
+		...transformedUsers.map((user) => [
+			user.id,
+			user.displayName,
+			user.roleId,
+			user.emailAddress,
+			user.userName,
+			user.timeZone,
+			user.modified,
+			user.created,
+			user.isAnonymous,
+			user.isSystemUser,
+			user.isPending,
+			user.isActive,
+			user.avatarKey,
+		]),
+	]
+		.map((e) => e.join(','))
+		.join('\n');
+
+	const createUploadResponse = await handleRequest(
+		'POST',
+		`/api/data/v3/datasources/${dataset}/uploads`,
+		{ action: null, appendId: null }
+	);
+	const uploadId = createUploadResponse.uploadId;
+
+	const uploadResponse = await handleRequest(
+		'PUT',
+		`/api/data/v3/datasources/${dataset}/uploads/${uploadId}/parts/1`,
+		csvString
+	);
+	const commitResponse = await handleRequest(
+		'PUT',
+		`/api/data/v3/datasources/${dataset}/uploads/${uploadId}/commit`,
+		{ action: 'REPLACE', index: true }
+	);
+	return commitResponse;
+}
+
 /**
  * Fetch detailed information for a specific user by Domo user ID.
  *
