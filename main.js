@@ -36,7 +36,7 @@ async function getUsersForDataset() {
 		offset: offset,
 		sort: {
 			field: 'created',
-			order: 'ASC',
+			order: 'ASC'
 		},
 		filters: [],
 		ids: [],
@@ -65,9 +65,9 @@ async function getUsersForDataset() {
 			'isPending',
 			'isActive',
 			'invitorUserId',
-			'lastActivity',
+			'lastActivity'
 		],
-		parts: ['DETAILED', 'GROUPS', 'ROLE', 'MINIMAL'],
+		parts: ['DETAILED', 'GROUPS', 'ROLE', 'MINIMAL']
 	};
 	while (moreData) {
 		const response = await codeengine.sendRequest('POST', url, body);
@@ -115,7 +115,7 @@ async function uploadUsersToDataset(users, dataset) {
 			'isSystemUser',
 			'isPending',
 			'isActive',
-			'avatarKey',
+			'avatarKey'
 		],
 		...transformedUsers.map((user) => [
 			user.id,
@@ -130,8 +130,8 @@ async function uploadUsersToDataset(users, dataset) {
 			user.isSystemUser,
 			user.isPending,
 			user.isActive,
-			user.avatarKey,
-		]),
+			user.avatarKey
+		])
 	]
 		.map((e) => e.join(','))
 		.join('\n');
@@ -271,14 +271,36 @@ async function transferContent(userId, newOwnerId) {
 	const goals = await getGoals(userId, currentPeriodId);
 	await transferGoals(goals, newOwnerId);
 
-	// Transfer AppDB Admin
-	await getAppDbAdmin(userId, newOwnerId);
+	// Transfer Groups
+	const groups = await getGroups(userId);
+	await transferGroups(groups, userId, newOwnerId);
 
-	// Transfer Beast Modes
-	await getBeastModes(userId, newOwnerId);
+	// Transfer AppDB Admin
+	const appDbCollections = await getAppDbCollections(userId);
+	await transferAppDbCollections(appDbCollections, newOwnerId);
+
+	// Transfer Functions (Beast Modes and Variables)
+	const beastModeIds = await getBeastModes(userId);
+	await transferBeastModes(beastModeIds, newOwnerId);
+
+	// Transfer Accounts
+	const accountIds = await getAccounts(userId);
+	await transferAccounts(accountIds, newOwnerId);
+
+	// Transfer Jupyter Workspaces
+	const jupyterWorkspaceIds = await getJupyterWorkspaces(userId);
+	await transferJupyterWorkspaces(jupyterWorkspaceIds, newOwnerId);
 
 	// Transfer Code Engine Package
-	await getCodeEnginePackages(userId, newOwnerId);
+	const codeEnginePackageIds = await getCodeEnginePackages(userId);
+	await transferCodeEnginePackages(codeEnginePackageIds, newOwnerId);
+
+	// Transfer FileSets
+	const filesetIds = await getFilesets(userId);
+	await transferFilesets(filesetIds, newOwnerId);
+
+	// Get Publications
+	const publications = await getPublications(userId);
 
 	// Transfer Subscriptions
 	await getSubscriptions(userId, newOwnerId);
@@ -299,7 +321,7 @@ async function transferContent(userId, newOwnerId) {
 	await getAiProjects(userId, newOwnerId);
 }
 
-//-------------------------DATASETS--------------------------//
+//-------------------------DataSets--------------------------//
 
 async function getDatasets(userId) {
 	let filteredDatasetList = [];
@@ -316,8 +338,8 @@ async function getDatasets(userId) {
 				{
 					field: 'owned_by_id',
 					filterType: 'term',
-					value: userId,
-				},
+					value: userId
+				}
 			],
 			combineResults: true,
 			query: '*',
@@ -325,8 +347,8 @@ async function getDatasets(userId) {
 			offset: offset,
 			sort: {
 				isRelevance: false,
-				fieldSorts: [{ field: 'create_date', sortOrder: 'DESC' }],
-			},
+				fieldSorts: [{ field: 'create_date', sortOrder: 'DESC' }]
+			}
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -354,7 +376,7 @@ async function getDatasets(userId) {
 async function transferDatasets(datasets, newOwnerId) {
 	for (let i = 0; i < datasets.length; i++) {
 		const data = {
-			responsibleUserId: newOwnerId,
+			responsibleUserId: newOwnerId
 		};
 
 		const response = await codeengine.sendRequest(
@@ -366,7 +388,7 @@ async function transferDatasets(datasets, newOwnerId) {
 	}
 }
 
-//----------------------CARDS-------------------------//
+//----------------------Cards-------------------------//
 
 async function getCards(userId) {
 	const url = '/api/search/v1/query';
@@ -388,10 +410,10 @@ async function getCards(userId) {
 					field: 'owned_by_id',
 					facetType: 'user',
 					value: `${userId}:USER`,
-					filterType: 'term',
-				},
+					filterType: 'term'
+				}
 			],
-			entityList: [['card']],
+			entityList: [['card']]
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -423,11 +445,11 @@ async function transferCards(cards, newOwnerId) {
 		cardOwners: [
 			{
 				id: `${newOwnerId}`,
-				type: 'USER',
-			},
+				type: 'USER'
+			}
 		],
 		note: '',
-		sendEmail: false,
+		sendEmail: false
 	};
 
 	const response = await codeengine.sendRequest(
@@ -438,7 +460,7 @@ async function transferCards(cards, newOwnerId) {
 	console.log(response);
 }
 
-// -----------------ALERTS--------------------------//
+// -----------------Alerts--------------------------//
 /**
  * Get alerts a user is subscribed to
  *
@@ -478,7 +500,7 @@ async function getAlerts(userId) {
 
 async function transferAlerts(alerts, newOwnerId) {
 	const data = {
-		alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }],
+		alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }]
 	};
 	for (let i = 0; i < alerts.length; i++) {
 		const response = await codeengine.sendRequest(
@@ -490,7 +512,7 @@ async function transferAlerts(alerts, newOwnerId) {
 	}
 }
 
-//---------------------------WORKFLOWS--------------------------------//
+//---------------------------Workflows--------------------------------//
 /**
  * Get Workflows owned by given user ID
  *
@@ -515,9 +537,9 @@ async function getWorkflows(userId) {
 					facetType: 'user',
 					filterType: 'term',
 					field: 'owned_by_id',
-					value: `${userId}:USER`,
-				},
-			],
+					value: `${userId}:USER`
+				}
+			]
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -554,7 +576,7 @@ async function transferWorkflows(workflows, newOwnerId) {
 	}
 }
 
-//--------------------------TASKS--------------------------//
+//--------------------------Tasks--------------------------//
 
 async function getTasks(userId) {
 	const url = '/api/queues/v1/tasks/list?limit=100&offset=0';
@@ -572,7 +594,7 @@ async function getTasks(userId) {
 			// Extract ids and append to list
 			const tasks = response.map((task) => ({
 				id: task.id,
-				queueId: task.queueId,
+				queueId: task.queueId
 			}));
 			filteredTaskist.push(...tasks);
 
@@ -601,7 +623,7 @@ async function transferTasks(tasks, newOwnerId) {
 	}
 }
 
-//----------------------------DATAFLOWS-----------------------//
+//----------------------------DataFlows-----------------------//
 
 async function getDataflows(userId) {
 	const url = '/api/search/v1/query';
@@ -618,12 +640,12 @@ async function getDataflows(userId) {
 				{
 					field: 'owned_by_id',
 					filterType: 'term',
-					value: userId,
-				},
+					value: userId
+				}
 			],
 			query: '*',
 			count: count,
-			offset: offset,
+			offset: offset
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -661,7 +683,7 @@ async function transferDataflows(dataflows, newOwnerId) {
 	}
 }
 
-//------------------------------------APPS--------------------------//
+//------------------------------------App Studio--------------------------//
 
 async function getAppStudio(userId) {
 	let filteredAppList = [];
@@ -707,13 +729,13 @@ async function transferAppStudio(apps, newOwnerId) {
 			note: '',
 			entityIds: [`${apps[i]}`],
 			owners: [{ type: 'USER', id: newOwnerId }],
-			sendEmail: false,
+			sendEmail: false
 		};
 		const response = await codeengine.sendRequest('PUT', url, data);
 	}
 }
 
-//-----------------------------------PAGES------------------------------//
+//-----------------------------------Pages------------------------------//
 
 async function getPages(userId) {
 	const url = '/api/search/v1/query';
@@ -734,10 +756,10 @@ async function getPages(userId) {
 					field: 'owned_by_id',
 					facetType: 'user',
 					value: `${userId}:USER`,
-					filterType: 'term',
-				},
+					filterType: 'term'
+				}
 			],
-			entityList: [['page']],
+			entityList: [['page']]
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -774,7 +796,7 @@ async function transferPages(pages, newOwnerId) {
 	}
 }
 
-//---------------------------------REPORTS--------------------------------//
+//---------------------------------Scheduled Reports--------------------------------//
 
 async function getScheduledReports(userId) {
 	const url = `/api/content/v1/reportschedules?OWNER=${userId}`;
@@ -794,7 +816,7 @@ async function getScheduledReports(userId) {
 async function transferScheduledReports(reports, newOwnerId) {
 	for (let i = 0; i < reports.length; i++) {
 		const data = {
-			ownerId: newOwnerId,
+			ownerId: newOwnerId
 		};
 		const url = `/api/content/v1/reportschedules/${reports[i]}`;
 		const response = await codeengine.sendRequest('PUT', url, data);
@@ -814,7 +836,7 @@ async function transferScheduledReports(reports, newOwnerId) {
 	// const data = {"attachmentInclude":false,"id":119,"schedule":{"frequency":"DAILY","ownerId":254530483,"daysToRun":"1,2,3,4,5,6,7","hourOfDay":"14","minOfHour":"15","expirationDate":1735973999000,"timezone":"Asia/Calcutta","additionalRecipients":[{"type":"USER","value":"795679564"},{"type":"USER","value":"85020081"},{"type":"USER","value":"254530483"}],"nextRunDate":1728072900000,"startDate":1727416800000,"unsubscribedRecipients":null,"enabled":false,"embedReport":false,"embedUrn":null},"ownerId":254530483,"subject":"Example Sales Data Report","viewId":768500629};
 }
 
-//---------------------------------------------GOALS------------------------------------------------//
+//---------------------------------------------Goals------------------------------------------------//
 
 async function getCurrentPeriod() {
 	const url = '/api/social/v2/objectives/periods?all=true';
@@ -844,8 +866,8 @@ async function transferGoals(goals, newOwnerId) {
 			{
 				ownerId: newOwnerId,
 				ownerType: 'USER',
-				primary: false,
-			},
+				primary: false
+			}
 		];
 
 		const data = goals[i];
@@ -855,11 +877,9 @@ async function transferGoals(goals, newOwnerId) {
 	}
 }
 
-//-----------------------------------------GROUPS----------------------------------------//
+//-----------------------------------------Groups----------------------------------------//
 
 async function getGroups(userId) {
-	const response = await codeengine.sendRequest('GET', url);
-
 	let groups = [];
 	const limit = 100;
 	let offset = 0;
@@ -890,38 +910,22 @@ async function getGroups(userId) {
 
 async function transferGroups(groups, userId, newOwnerId) {
 	const url = '/api/content/v2/groups/access';
-	body = [
-		{
-			groupId: 123456,
-			addOwners: [
-				{
-					type: 'GROUP', //USER or GROUP
-					id: '123456',
-				},
-			],
-			removeOwners: [
-				{
-					type: 'USER', //USER or GROUP
-					id: '123456',
-				},
-			],
-		},
-	];
 
 	var data = [];
 	for (let i = 0; i < groups.length; i++) {
 		data.push({
 			groupId: groups[i].id,
 			addOwners: [{ type: 'USER', id: newOwnerId }],
-			removeOwners: [{ type: 'USER', id: userId }],
+			removeOwners: [{ type: 'USER', id: userId }]
 		});
 	}
 	const response = await codeengine.sendRequest('PUT', url, data);
 }
 
-//-----------------------------------------AppDB Admin--------------------------------//
+//-----------------------------------------AppDB--------------------------------//
+// Datastore owner cannot be updated
 
-async function getAppDbAdmin(userId, newOwnerId) {
+async function getAppDbCollections(userId) {
 	const url = '/api/datastores/v1/collections/query';
 
 	let moreData = true;
@@ -935,18 +939,18 @@ async function getAppDbAdmin(userId, newOwnerId) {
 				{
 					filterType: 'ownedby',
 					comparingCriteria: 'equals',
-					typedValue: userId,
-				},
+					typedValue: userId
+				}
 			],
 			pageSize: pageSize,
-			pageNumber: pageNumber,
+			pageNumber: pageNumber
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
 
 		if (response.collections && response.collections.length > 0) {
 			// Extract ids and append to list
-			const ids = response.collections.map((appDb) => appDb.id);
+			const ids = response.collections.map((collection) => collection.id);
 			collectionList.push(...ids);
 
 			// Increment offset to get next page
@@ -961,31 +965,28 @@ async function getAppDbAdmin(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
-
-	//console.log(collectionList);
-	await changeAppDbAdminOwner(collectionList, newOwnerId);
+	return collectionList;
 }
 
-async function changeAppDbAdminOwner(appDbAdminList, newOwnerId) {
-	for (let i = 0; i < appDbAdminList.length; i++) {
-		const url = `/api/datastores/v1/collections/${appDbAdminList[i]}`;
+async function transferAppDbCollections(collections, newOwnerId) {
+	for (let i = 0; i < collections.length; i++) {
+		const url = `/api/datastores/v1/collections/${collections[i]}`;
 
-		const data = { id: appDbAdminList[i], owner: newOwnerId };
+		const data = { id: collections[i], owner: newOwnerId };
 
-		const response = await codeengine.sendRequest('PUT', url, data);
-		//console.log(response);
+		await codeengine.sendRequest('PUT', url, data);
 	}
 }
 
-//--------------------------BEASTMODES-------------------------//
+//--------------------------Functions (Beast Modes and Variables)-------------------------//
 
-async function getBeastModes(userId, newOwnerId) {
+async function getBeastModes(userId) {
 	const url = '/api/query/v1/functions/search';
 
 	let moreData = true;
 	let offset = 0;
 	const limit = 100;
-	let beastmodesList = [];
+	let beastModeIds = [];
 
 	while (moreData) {
 		const data = {
@@ -993,15 +994,15 @@ async function getBeastModes(userId, newOwnerId) {
 			filters: [
 				{ field: 'owner', idList: [userId] },
 				{
-					field: 'notvariable',
-				},
+					field: 'notvariable'
+				}
 			],
 			sort: {
 				field: 'name',
-				ascending: true,
+				ascending: true
 			},
-			limit: 100,
-			offset: 0,
+			limit: limit,
+			offset: offset
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -1009,14 +1010,143 @@ async function getBeastModes(userId, newOwnerId) {
 
 		if (response.results && response.results.length > 0) {
 			// Extract ids and append to list
-			const ids = response.results.map((beastmode) => beastmode.id);
-			beastmodesList.push(...ids);
+			const ids = response.results.map((beastMode) => beastMode.id);
+			beastModeIds.push(...ids);
+
+			// Increment offset to get next page
+			offset += limit;
+
+			hasMore = response.hasMore;
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
+		}
+	}
+	return beastModeIds;
+}
+
+async function transferBeastModes(beastModeIds, newOwnerId) {
+	const data = [];
+	const url = '/api/query/v1/functions/bulk/template';
+
+	for (let i = 0; i < beastModeIds.length; i++) {
+		data.push({
+			id: beastModeIds[i],
+			owner: newOwnerId
+		});
+	}
+	const body = {
+		update: data
+	};
+	await handleRequest('PUT', url, body);
+}
+
+//-----------------------------Accounts---------------------//
+
+async function getAccounts(userId) {
+	const url = '/api/search/v1/query';
+
+	let moreData = true;
+	let offset = 0;
+	const count = 100;
+	let accountIds = [];
+
+	while (moreData) {
+		const data = {
+			count: count,
+			offset: offset,
+			combineResults: false,
+			hideSearchObjects: true,
+			query: '**',
+			filters: [
+				{
+					filterType: 'term',
+					field: 'owned_by_id',
+					value: userId,
+					name: 'Owned by',
+					not: false
+				}
+			],
+			facetValuesToInclude: [],
+			queryProfile: 'GLOBAL',
+			entityList: [['account']]
+		};
+
+		const response = await codeengine.sendRequest('POST', url, data);
+		if (
+			response.searchResultsMap &&
+			response.searchResultsMap.account.length > 0
+		) {
+			// Extract ids and append to list
+			const ids = response.searchResultsMap.account.map(
+				(account) => account.id
+			);
+			accountIds.push(...ids);
+
+			// Increment offset to get next page
+			offset += count;
+
+			// If less than pageSize returned, this is the last page
+			if (response.searchResultsMap.account.length < count) {
+				moreData = false;
+			}
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
+		}
+		moreData = false;
+	}
+	return accountIds;
+}
+
+async function transferAccounts(accountIds, newOwnerId) {
+	for (let i = 0; i < accountIds.length; i++) {
+		const url = `/api/data/v2/accounts/share/${accountIds[i]}`;
+
+		const data = { type: 'USER', id: newOwnerId, accessLevel: 'OWNER' };
+
+		const response = await codeengine.sendRequest('PUT', url, data);
+	}
+}
+
+//---------------------------Jupyter Workspaces---------------------//
+
+async function getJupyterWorkspaces(userId) {
+	const url = '/api/datascience/v1/search/workspaces';
+
+	let moreData = true;
+	let offset = 0;
+	const limit = 100;
+	let jupyterWorkspaceIds = [];
+	while (moreData) {
+		const data = {
+			sortFieldMap: {
+				LAST_RUN: 'DESC'
+			},
+			searchFieldMap: {},
+			filters: [
+				{
+					type: 'OWNER',
+					values: [userId]
+				}
+			],
+			offset: offset,
+			limit: limit
+		};
+
+		const response = await codeengine.sendRequest('POST', url, data);
+		//console.log(response);
+
+		if (response.workspaces && response.workspaces.length > 0) {
+			// Extract ids and append to list
+			const ids = response.workspaces.map((workspace) => workspace.id);
+			jupyterWorkspaceIds.push(...ids);
 
 			// Increment offset to get next page
 			offset += limit;
 
 			// If less than pageSize returned, this is the last page
-			if (response.results.length < limit) {
+			if (response.workspaces.length < limit) {
 				moreData = false;
 			}
 		} else {
@@ -1024,120 +1154,30 @@ async function getBeastModes(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
-
-	console.log(beastmodesList);
-	await changeBeastmodeOwner(beastmodesList, newOwnerId);
+	return jupyterWorkspaceIds;
 }
 
-async function changeBeastmodeOwner(beastmodesList, newOwnerId) {
-	const data = { owner: newOwnerId };
-
-	for (let i = 0; i < beastmodesList.length; i++) {
-		const url = `/api/query/v1/functions/template/${beastmodesList[i]}`;
-
-		try {
-			const response = await codeengine.sendRequest('PUT', url, data);
-			console.log(response);
-		} catch (error) {
-			console.log(error);
-		}
+async function transferJupyterWorkspaces(jupyterWorkspaceIds, newOwnerId) {
+	const data = { newOwnerId };
+	for (let i = 0; i < jupyterWorkspaceIds.length; i++) {
+		const url = `/api/datascience/v1/workspaces/${jupyterWorkspaceIds[i]}/ownership`;
+		await codeengine.sendRequest('PUT', url, data);
 	}
 }
 
-//-----------------------------ACCOUNTS---------------------//
+//------------------------------Code Engine Packages--------------------------//
 
-async function getAccounts() {
+async function getCodeEnginePackages(userId) {
 	const url = '/api/search/v1/query';
 
 	let moreData = true;
 	let offset = 0;
 	const count = 100;
-	let beastmodesList = [];
+	let codeEnginePackageIds = [];
 
 	while (moreData) {
 		const data = {
-			count: count,
-			offset: offset,
-			combineResults: false,
 			query: '**',
-			filters: [
-				{
-					filterType: 'term',
-					field: 'owned_by_id',
-					value: 795679564,
-					name: 'Owned by',
-					not: false,
-					label: 'Andy Caceres',
-				},
-			],
-			facetValuesToInclude: [
-				'DATAPROVIDERNAME',
-				'OWNED_BY_ID',
-				'VALID',
-				'USED',
-				'LAST_MODIFIED_DATE',
-			],
-			queryProfile: 'GLOBAL',
-			entityList: [['account']],
-		};
-
-		const response = await codeengine.sendRequest('POST', url, data);
-		console.log(response.searchObjects);
-
-		moreData = false;
-
-		//   if (response.results && response.results.length > 0) {
-		//     // Extract ids and append to list
-		//     const ids = response.results.map(beastmode => beastmode.id);
-		//     beastmodesList.push(...ids);
-
-		//     // Increment offset to get next page
-		//     offset += count;
-
-		//     // If less than pageSize returned, this is the last page
-		//     if (response.results.length < limit) {
-		//       moreData = false;
-		//     }
-		//   } else {
-		//     // No more data returned, stop loop
-		//     moreData = false;
-		//   }
-	}
-
-	//console.log(beastmodesList);
-	//await changeBeastmodeOwner(beastmodesList, newOwnerId);
-}
-
-// ERROR ACCESS DENIED 403
-async function changeAccountOwner() {
-	const url = `/api/data/v2/accounts/share/507`;
-
-	const data = { type: 'USER', id: 254530483, accessLevel: 'OWNER' };
-
-	const response = await codeengine.sendRequest('PUT', url, data);
-	console.log(response);
-}
-
-//---------------------------JUPYTER WORKSPACES---------------------//
-
-// Server Error 500
-async function changeJupyerOwner() {
-	const url = ``;
-}
-
-//------------------------------CODE ENGINE--------------------------//
-
-async function getCodeEnginePackages(userId, newOwnerId) {
-	const url = '/api/search/v1/query';
-
-	let moreData = true;
-	let offset = 0;
-	const count = 100;
-	let codeEngineList = [];
-
-	while (moreData) {
-		const data = {
-			query: '*',
 			entityList: [['package']],
 			count: count,
 			offset: offset,
@@ -1145,24 +1185,30 @@ async function getCodeEnginePackages(userId, newOwnerId) {
 				{
 					field: 'owned_by_id',
 					filterType: 'term',
-					value: `${userId}:USER`,
-				},
+					value: `${userId}:USER`
+				}
 			],
+			hideSearchObjects: true,
+			facetValuesToInclude: []
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
-		//console.log(response.searchObjects);
 
-		if (response.searchObjects && response.searchObjects.length > 0) {
+		if (
+			response.searchResultsMap.package &&
+			response.searchResultsMap.package.length > 0
+		) {
 			// Extract ids and append to list
-			const ids = response.searchObjects.map((codeEngine) => codeEngine.uuid);
-			codeEngineList.push(...ids);
+			const ids = response.searchResultsMap.package.map(
+				(codeEngine) => codeEngine.uuid
+			);
+			codeEnginePackageIds.push(...ids);
 
 			// Increment offset to get next page
 			offset += count;
 
 			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
+			if (response.searchResultsMap.package.length < count) {
 				moreData = false;
 			}
 		} else {
@@ -1171,28 +1217,79 @@ async function getCodeEnginePackages(userId, newOwnerId) {
 		}
 	}
 
-	//console.log(codeEngineList);
-	await changeCodeEngineOwner(codeEngineList, newOwnerId);
+	return codeEnginePackageIds;
 }
 
-async function changeCodeEngineOwner(codeEngineList, newOwnerId) {
-	for (let i = 0; i < codeEngineList.length; i++) {
-		const url = `/api/codeengine/v2/packages/${codeEngineList[i]}`;
-
-		const data = { owner: newOwnerId };
-
-		const response = await codeengine.sendRequest('PUT', url, data);
+async function transferCodeEnginePackages(codeEnginePackageIds, newOwnerId) {
+	const data = { owner: parseInt(newOwnerId) };
+	for (let i = 0; i < codeEnginePackageIds.length; i++) {
+		const url = `/api/codeengine/v2/packages/${codeEnginePackageIds[i]}`;
+		await codeengine.sendRequest('PUT', url, data);
 	}
 }
 
-//---------------------------------------FILE SETS--------------------------------------------//
+//---------------------------------------FileSets--------------------------------------------//
 
-//--------------------------------------PUBLICATIONS------------------------------------------//
+async function getFilesets(userId) {
+	let moreData = true;
+	let offset = 0;
+	const limit = 100;
+	let filesetIds = [];
+	const body = {
+		filters: [
+			{
+				field: 'owner',
+				idList: [userId],
+				not: false,
+				operator: 'EQUALS'
+			}
+		],
+		fieldSort: {
+			field: 'updated',
+			order: 'DESC'
+		},
+		dateFilters: []
+	};
+
+	while (moreData) {
+		const url = `/api/files/v1/filesets/search?offset=${offset}&limit=${limit}`;
+
+		const response = await codeengine.sendRequest('POST', url, body);
+		if (response.filesets && response.filesets.length > 0) {
+			// Extract ids and append to list
+			const ids = response.filesets.map((fileset) => fileset.id);
+			filesetIds.push(...ids);
+
+			// Increment offset to get next page
+			offset += limit;
+
+			// If less than pageSize returned, this is the last page
+			if (response.filesets.length < limit) {
+				moreData = false;
+			}
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
+		}
+	}
+	return filesetIds;
+}
+
+async function transferFilesets(filesetIds, newOwnerId) {
+	const body = { userId: parseInt(newOwnerId) };
+
+	for (let i = 0; i < filesetIds.length; i++) {
+		const url = `/api/files/v1/filesets/${filesetIds[i]}/ownership`;
+		await codeengine.sendRequest('POST', url, body);
+	}
+}
+
+//--------------------------------------Domo Everywhere Publications------------------------------------------//
 
 // Limitation the new owner must be an owner of all the content
 // Just get a list of publications for the manager to review
 
-async function getPublications() {
+async function getPublications(userId) {
 	let publicationList = [];
 	const url = '/api/publish/v2/publications';
 
@@ -1201,15 +1298,15 @@ async function getPublications() {
 		const publicationId = response[i].id;
 		const publicationUrl = `/api/publish/v2/publications/${publicationId}`;
 		const response2 = await codeengine.sendRequest('GET', publicationUrl);
-		if (response2.content.userId == 1467216443) {
+		if (response2.content.userId == userId) {
 			publicationList.push(publicationId);
 		}
 	}
 
-	console.log(publicationList);
+	return publicationList;
 }
 
-//-------------------------------------SUBSCRIPTIONS-----------------------------------------//
+//-------------------------------------Domo Everywhere Subscriptions-----------------------------------------//
 
 async function getSubscriptions(userId, newOwnerId) {
 	//const userId = '795679564';
@@ -1249,7 +1346,7 @@ async function changeSubscriptionOwner(
 		publicationId: publicationId,
 		domain: domain,
 		customerId: customerId,
-		userId: userId,
+		userId: userId
 	};
 
 	const response = await codeengine.sendRequest('PUT', url, data);
@@ -1263,7 +1360,7 @@ async function changeSubscriptionOwner(
 //   console.log(subscriptionsAll);
 // }
 
-//--------------------------------------------------SANDBOX REPOSITORIES---------------------------------//
+//--------------------------------------------------Sandbox Repositories---------------------------------//
 
 async function getRepositories(userId, newOwnerId) {
 	const url = '/api/version/v1/repositories/search';
@@ -1282,9 +1379,9 @@ async function getRepositories(userId, newOwnerId) {
 				sort: 'lastCommit',
 				order: 'desc',
 				filters: { userId: [userId] },
-				dateFilters: {},
+				dateFilters: {}
 			},
-			shared: false,
+			shared: false
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -1311,7 +1408,7 @@ async function getRepositories(userId, newOwnerId) {
 	}
 
 	console.log(repositoriesList);
-	await changeBeastmodeOwner(repositoriesList, newOwnerId);
+	await transferBeastModes(repositoriesList, newOwnerId);
 }
 
 async function changeRepositoryOwner(repositoriesList, newOwnerId) {
@@ -1323,9 +1420,9 @@ async function changeRepositoryOwner(repositoriesList, newOwnerId) {
 				{
 					userId: newOwnerId,
 					groupId: '',
-					permission: 'OWNER',
-				},
-			],
+					permission: 'OWNER'
+				}
+			]
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
@@ -1333,7 +1430,7 @@ async function changeRepositoryOwner(repositoriesList, newOwnerId) {
 	}
 }
 
-//-----------------------------------------APPROVALS--------------------------------------//
+//-----------------------------------------Approvals--------------------------------------//
 
 async function getApprovals(userId, newOwnerId) {
 	const url = '/api/synapse/approval/graphql';
@@ -1343,7 +1440,7 @@ async function getApprovals(userId, newOwnerId) {
 		{
 			operationName: 'getStats',
 			query:
-				'query getStats($from: Int!, $to: Int!, $threshold: Int!) {\n  countTotalRequests {\n    current\n    __typename\n  }\n  countStaleRequests(from: $from, to: $to, threshold: $threshold) {\n    current\n    __typename\n  }\n}\n',
+				'query getStats($from: Int!, $to: Int!, $threshold: Int!) {\n  countTotalRequests {\n    current\n    __typename\n  }\n  countStaleRequests(from: $from, to: $to, threshold: $threshold) {\n    current\n    __typename\n  }\n}\n'
 		},
 		{
 			operationName: 'getFilteredRequests',
@@ -1354,14 +1451,14 @@ async function getApprovals(userId, newOwnerId) {
 					approverId: userId,
 					templateId: null,
 					title: null,
-					lastModifiedBefore: null,
+					lastModifiedBefore: null
 				},
 				after: null,
-				reverseSort: false,
+				reverseSort: false
 			},
 			query:
-				'query getFilteredRequests($query: QueryRequest!, $after: ID, $reverseSort: Boolean) {\n  workflowSearch(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {\n    edges {\n      cursor\n      node {\n        approval {\n          id\n          title\n          templateTitle\n          status\n          modifiedTime\n          version\n          providerName\n          approvalChainIdx\n          pendingApprover: pendingApproverEx {\n            id\n            type\n            displayName\n            ... on User {\n              title\n              avatarKey\n              __typename\n            }\n            ... on Group {\n              isDeleted\n              __typename\n            }\n            __typename\n          }\n          submitter {\n            id\n            type\n            displayName\n            avatarKey\n            isCurrentUser\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n      __typename\n    }\n    __typename\n  }\n}\n',
-		},
+				'query getFilteredRequests($query: QueryRequest!, $after: ID, $reverseSort: Boolean) {\n  workflowSearch(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {\n    edges {\n      cursor\n      node {\n        approval {\n          id\n          title\n          templateTitle\n          status\n          modifiedTime\n          version\n          providerName\n          approvalChainIdx\n          pendingApprover: pendingApproverEx {\n            id\n            type\n            displayName\n            ... on User {\n              title\n              avatarKey\n              __typename\n            }\n            ... on Group {\n              isDeleted\n              __typename\n            }\n            __typename\n          }\n          submitter {\n            id\n            type\n            displayName\n            avatarKey\n            isCurrentUser\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n      __typename\n    }\n    __typename\n  }\n}\n'
+		}
 	];
 
 	const response = await codeengine.sendRequest('POST', url, data);
@@ -1393,19 +1490,19 @@ async function approvalChangeOwner(approvalId, newOwnerId, version) {
 				actedOnApprovals: [
 					{
 						id: approvalId,
-						version: version,
-					},
+						version: version
+					}
 				],
 				newApproverId: newOwnerId,
-				newApproverType: 'PERSON',
+				newApproverType: 'PERSON'
 			},
 			query:
-				'mutation replaceApprovers($actedOnApprovals: [ActedOnApprovalInput!]!, $newApproverId: ID!, $newApproverType: ApproverType) {\n  bulkReplaceApprover(actedOnApprovals: $actedOnApprovals, newApproverId: $newApproverId, newApproverType: $newApproverType) {\n    id\n    __typename\n  }\n}\n',
-		},
+				'mutation replaceApprovers($actedOnApprovals: [ActedOnApprovalInput!]!, $newApproverId: ID!, $newApproverType: ApproverType) {\n  bulkReplaceApprover(actedOnApprovals: $actedOnApprovals, newApproverId: $newApproverId, newApproverType: $newApproverType) {\n    id\n    __typename\n  }\n}\n'
+		}
 	];
 }
 
-//--------------------------------CUSTOM APPS-------------------------------------//
+//--------------------------------Custom Apps-------------------------------------//
 
 async function getCustomApps(userId, newOwnerId) {
 	const limit = 30;
@@ -1441,7 +1538,7 @@ async function customAppChangeOwner(customAppId, newOwnerId) {
 	console.log(response);
 }
 
-//-------------------------------------AI MODEL--------------------------------//
+//-------------------------------------AI Models--------------------------------//
 
 async function getAiModels(userId, newOwnerId) {
 	const url = '/api/datascience/ml/v1/search/models';
@@ -1449,13 +1546,13 @@ async function getAiModels(userId, newOwnerId) {
 	const data = {
 		limit: 50,
 		sortFieldMap: {
-			CREATED: 'DESC',
+			CREATED: 'DESC'
 		},
 		searchFieldMap: { NAME: '' },
 		filters: [{ type: 'OWNER', values: [userId] }],
 		metricFilters: {},
 		dateFilters: {},
-		sortMetricMap: {},
+		sortMetricMap: {}
 	};
 
 	const response = await codeengine.sendRequest('POST', url, data);
@@ -1476,7 +1573,7 @@ async function aiModelChangeOwner(modelId, newOwnerId) {
 	console.log(response);
 }
 
-//-----------------------------------AI PROJECTS----------------------------------//
+//-----------------------------------AI Projects----------------------------------//
 
 async function getAiProjects(userId, newOwnerId) {
 	const url = '/api/datascience/ml/v1/search/projects';
@@ -1486,7 +1583,7 @@ async function getAiProjects(userId, newOwnerId) {
 		sortFieldMap: { CREATED: 'DESC' },
 		searchFieldMap: { NAME: '' },
 		filters: [{ type: 'OWNER', values: [userId] }],
-		dateFilters: {},
+		dateFilters: {}
 	};
 
 	const response = await codeengine.sendRequest('POST', url, data);
