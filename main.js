@@ -303,10 +303,12 @@ async function transferContent(userId, newOwnerId) {
 	const publications = await getPublications(userId);
 
 	// Transfer Subscriptions
-	await getSubscriptions(userId, newOwnerId);
+	const subscriptions = await getSubscriptions(userId);
+	await transferSubscriptions(subscriptions, newOwnerId);
 
 	// Transfer Sandbox Repositories
-	await getRepositories(userId, newOwnerId);
+	const repositoryIds = await getRepositories(userId);
+	await transferRepositories(repositoryIds, newOwnerId);
 
 	// Transfer Approvals
 	await getApprovals(userId, newOwnerId);
@@ -1308,67 +1310,48 @@ async function getPublications(userId) {
 
 //-------------------------------------Domo Everywhere Subscriptions-----------------------------------------//
 
-async function getSubscriptions(userId, newOwnerId) {
-	//const userId = '795679564';
-	//const newUserId = '2087687724';
-
+async function getSubscriptions(userId) {
 	const url = 'api/publish/v2/subscriptions/summaries';
 
 	const subscriptionsAll = await codeengine.sendRequest('GET', url);
-
+	let subscriptionsList = [];
 	for (let i = 0; i < subscriptionsAll.length; i++) {
 		const subscriptionUrl = `api/publish/v2/subscriptions/${subscriptionsAll[i].subscriptionId}/share`;
 
 		const subscription = await codeengine.sendRequest('GET', subscriptionUrl);
-
 		if (subscription.userId == userId) {
-			await changeSubscriptionOwner(
-				subscription.subscription.id,
-				subscription.subscription.publicationId,
-				subscription.subscription.content.domain,
-				subscription.subscription.content.customerId,
-				newOwnerId
-			);
+			subscriptionsList.push(subscription);
 		}
+	}
+	return subscriptionsList;
+}
+
+async function transferSubscriptions(subscriptions, newOwnerId) {
+	for (let i = 0; i < subscriptions.length; i++) {
+		const url = `/api/publish/v2/subscriptions/${subscriptions[i].subscription.id}`;
+
+		const body = {
+			publicationId: subscriptions[i].subscription.publicationId,
+			domain: subscriptions[i].subscription.domain,
+			customerId: subscriptions[i].subscription.customerId,
+			userId: newOwnerId,
+			userIds: subscriptions[i].shareUsers,
+			groupIds: subscriptions[i].shareGroups
+		};
+
+		await handleRequest('PUT', url, body);
 	}
 }
 
-async function changeSubscriptionOwner(
-	subscriptionId,
-	publicationId,
-	domain,
-	customerId,
-	userId
-) {
-	const url = `/api/publish/v2/subscriptions/${subscriptionId}`;
-
-	const data = {
-		publicationId: publicationId,
-		domain: domain,
-		customerId: customerId,
-		userId: userId
-	};
-
-	const response = await codeengine.sendRequest('PUT', url, data);
-	console.log(response);
-}
-
-// async function getSubscriptions2(){
-//   const url = 'api/publish/v2/subscriptions/121ff00c-787a-4ec4-bfc9-b942283db275/share';
-
-//   const subscriptionsAll = await codeengine.sendRequest('GET', url);
-//   console.log(subscriptionsAll);
-// }
-
 //--------------------------------------------------Sandbox Repositories---------------------------------//
 
-async function getRepositories(userId, newOwnerId) {
+async function getRepositories(userId) {
 	const url = '/api/version/v1/repositories/search';
 
 	let moreData = true;
 	let offset = 0;
 	const limit = 50;
-	let repositoriesList = [];
+	let repositoryIds = [];
 
 	while (moreData) {
 		const data = {
@@ -1380,19 +1363,15 @@ async function getRepositories(userId, newOwnerId) {
 				order: 'desc',
 				filters: { userId: [userId] },
 				dateFilters: {}
-			},
-			shared: false
+			}
 		};
 
 		const response = await codeengine.sendRequest('POST', url, data);
-		console.log(response.repositories);
-
-		moreData = false;
 
 		if (response.repositories && response.repositories.length > 0) {
 			// Extract ids and append to list
 			const ids = response.repositories.map((repository) => repository.id);
-			repositoriesList.push(...ids);
+			repositoryIds.push(...ids);
 
 			// Increment offset to get next page
 			offset += limit;
@@ -1406,16 +1385,14 @@ async function getRepositories(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
-
-	console.log(repositoriesList);
-	await transferBeastModes(repositoriesList, newOwnerId);
+	return repositoryIds;
 }
 
-async function changeRepositoryOwner(repositoriesList, newOwnerId) {
-	for (let i = 0; i < repositoriesList.length; i++) {
-		const url = `/api/version/v1/repositories/${repositoriesList[i]}`;
+async function transferRepositories(repositoryIds, newOwnerId) {
+	for (let i = 0; i < repositoryIds.length; i++) {
+		const url = `/api/version/v1/repositories/${repositoryIds[i]}`;
 
-		const data = {
+		const body = {
 			repositoryPermissionUpdates: [
 				{
 					userId: newOwnerId,
@@ -1425,8 +1402,7 @@ async function changeRepositoryOwner(repositoriesList, newOwnerId) {
 			]
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
-		console.log(response);
+		await handleRequest('POST', url, body);
 	}
 }
 
