@@ -1448,7 +1448,7 @@ async function getApprovals(userId, newOwnerId) {
 		const version = responseApprovals[i].node.approval.version;
 
 		if (approverId == userId) {
-			await approvalChangeOwner(approvalId, newOwnerId, version);
+			await transferApprovals(approvalId, newOwnerId, version);
 			//approvalList.push(approvalId);
 		}
 	}
@@ -1456,7 +1456,7 @@ async function getApprovals(userId, newOwnerId) {
 	console.log(approvalList);
 }
 
-async function approvalChangeOwner(approvalId, newOwnerId, version) {
+async function transferApprovals(approvalId, newOwnerId, version) {
 	const url = '/api/synapse/approval/graphql';
 
 	const data = [
@@ -1478,22 +1478,21 @@ async function approvalChangeOwner(approvalId, newOwnerId, version) {
 	];
 }
 
-//--------------------------------Custom Apps-------------------------------------//
+//--------------------------------Custom Apps (Bricks and Pro Code Apps)-------------------------------------//
 
 async function getCustomApps(userId, newOwnerId) {
 	const limit = 30;
 	let offset = 0;
 	let moreData = true;
+	let customAppIds = [];
 
 	while (moreData) {
-		const url = `/api/apps/v1/designs?checkAdminAuthority=true&limit=30&offset=${offset}`;
+		const url = `/api/apps/v1/designs?checkAdminAuthority=true&${limit}&offset=${offset}`;
 		const response = await codeengine.sendRequest('GET', url);
-		//console.log(response);
 
 		for (let i = 0; i < response.length; i++) {
 			if (response[i].owner == userId) {
-				console.log(response[i].id);
-				customAppChangeOwner(response[i].id, newOwnerId);
+				customAppIds.push(response[i].id);
 			}
 		}
 
@@ -1505,13 +1504,12 @@ async function getCustomApps(userId, newOwnerId) {
 	}
 }
 
-async function customAppChangeOwner(customAppId, newOwnerId) {
+async function transferCustomApps(customAppIds, newOwnerId) {
 	const url = `/api/apps/v1/designs/${customAppId}/permissions/ADMIN`;
 
 	const data = [newOwnerId];
 
 	const response = await codeengine.sendRequest('POST', url, data);
-	console.log(response);
 }
 
 //-------------------------------------AI Models--------------------------------//
