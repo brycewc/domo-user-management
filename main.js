@@ -1,3 +1,4 @@
+/* eslint require-atomic-updates: 0 */
 const codeengine = require('codeengine');
 
 class Helpers {
@@ -18,6 +19,8 @@ class Helpers {
 		}
 	}
 }
+
+const { handleRequest } = Helpers;
 
 async function getUsersForDataset() {
 	var users = [];
@@ -163,8 +166,26 @@ async function uploadUsersToDataset(users, dataset) {
  * @returns {Promise<void>} Resolves after logging the user details.
  */
 async function getUserDetails(userId) {
-	const url = `/api/content/v2/users/${userId}`;
-	return (response = await handleRequest('GET', url));
+	const url = `/api/identity/v1/users/${userId}?parts=DETAILED`;
+	var user;
+	await handleRequest('GET', url).then((response) => {
+		user = response.users[0];
+		user.attributes.forEach((attribute) => {
+			const key = attribute.key;
+			const value = attribute.values[0]; // Assuming values array always has one element
+			user[key] = value;
+		});
+		delete user.attributes;
+		delete user.role;
+	});
+	if (!user.reportsTo) {
+		const queryResponse = await handleRequest(
+			'POST',
+			'api/query/v1/execute/87276a1f-12ff-4008-904f-874966e618fa'
+		); // Output: Domo Users (domo.domo) |PROD| - https://domo.domo.com/datasources/87276a1f-12ff-4008-904f-874966e618fa/details/data/table
+		user.reportsTo = queryResponse[0]['HRIS Manager Domo ID'];
+	}
+	return user;
 }
 
 /**
@@ -369,11 +390,7 @@ async function transferCards(userId, newOwnerId) {
 				sendEmail: false
 			};
 
-			const response = await handleRequest(
-				'POST',
-				'/api/content/v1/cards/owners/add',
-				body
-			);
+			await handleRequest('POST', '/api/content/v1/cards/owners/add', body);
 
 			// Increment offset to get next page
 			offset += count;
@@ -444,11 +461,10 @@ async function transferAlerts(userId, newOwnerId) {
  * @returns {Array<string>} List of workflow IDs owned by the user.
  */
 async function transferWorkflows(userId, newOwnerId) {
-	const url = '/api/search/v1/query';
-	let workflows = [];
-	let offset = 0;
 	const count = 100;
+	let offset = 0;
 	let moreData = true;
+	let workflows = [];
 
 	while (moreData) {
 		const data = {
@@ -466,7 +482,7 @@ async function transferWorkflows(userId, newOwnerId) {
 			]
 		};
 
-		const response = await handleRequest('POST', url, data);
+		const response = await handleRequest('POST', '/api/search/v1/query', data);
 		//console.log(response.searchObjects);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
@@ -541,12 +557,10 @@ async function transferTasks(userId, newOwnerId) {
 //----------------------------DataFlows-----------------------//
 
 async function transferDataflows(userId, newOwnerId) {
-	const url = '/api/search/v1/query';
-
-	let dataflows = [];
-	let offset = 0;
 	const count = 100;
+	let offset = 0;
 	let moreData = true;
+	let dataflows = [];
 
 	while (moreData) {
 		const data = {
@@ -563,7 +577,7 @@ async function transferDataflows(userId, newOwnerId) {
 			offset: offset
 		};
 
-		const response = await handleRequest('POST', url, data);
+		const response = await handleRequest('POST', '/api/search/v1/query', data);
 		//console.log(response.searchObjects);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
@@ -907,7 +921,7 @@ async function transferBeastModes(userId, newOwnerId) {
 			// Increment offset to get next page
 			offset += limit;
 
-			hasMore = response.hasMore;
+			moreData = response.hasMore;
 		} else {
 			// No more data returned, stop loop
 			moreData = false;
@@ -1313,7 +1327,7 @@ async function transferApprovals(userId, newOwnerId) {
 		const version = responseApprovals[i].node.approval.version;
 
 		if (approverId == userId) {
-			const data = [
+			const transferBody = [
 				{
 					operationName: 'replaceApprovers',
 					variables: {
@@ -1331,7 +1345,7 @@ async function transferApprovals(userId, newOwnerId) {
 				}
 			];
 
-			await handleRequest('POST', url, data);
+			await handleRequest('POST', url, transferBody);
 		}
 	}
 }
@@ -1350,9 +1364,9 @@ async function transferCustomApps(userId, newOwnerId) {
 		if (response && response.length > 0) {
 			for (let i = 0; i < response.length; i++) {
 				if (response[i].owner == userId) {
-					const url = `/api/apps/v1/designs/${response[i].id}/permissions/ADMIN`;
+					const transferUrl = `/api/apps/v1/designs/${response[i].id}/permissions/ADMIN`;
 					const body = [newOwnerId];
-					await handleRequest('POST', url, body);
+					await handleRequest('POST', transferUrl, body);
 				}
 			}
 
