@@ -70,7 +70,7 @@ async function getUsersForDataset() {
 		parts: ['DETAILED', 'GROUPS', 'ROLE', 'MINIMAL']
 	};
 	while (moreData) {
-		const response = await codeengine.sendRequest('POST', url, body);
+		const response = await handleRequest('POST', url, body);
 
 		if (response.users && response.users.length > 0) {
 			users.push(...response.users);
@@ -166,7 +166,7 @@ async function getUserDetails(userId) {
 	const url = `/api/content/v2/users/${userId}`;
 
 	try {
-		const response = await codeengine.sendRequest('GET', url);
+		const response = await handleRequest('GET', url);
 		console.log(response);
 	} catch (error) {
 		console.log('There was an error fetching the user: ' + error);
@@ -183,7 +183,7 @@ async function deleteUserSessions(userId) {
 	const url = '/api/sessions/v1/admin?limit=99999999';
 	try {
 		// Fetch all sessions (potentially large number depending on 'limit')
-		const response = await codeengine.sendRequest('GET', url);
+		const response = await handleRequest('GET', url);
 
 		// Find sessions assigned to the specified user
 		const sessionsToDelete = response.filter((s) => s.userId === userId);
@@ -205,7 +205,7 @@ async function deleteSession(sessionId) {
 	const url = `api/sessions/v1/admin/${sessionId}`;
 
 	try {
-		const response = await codeengine.sendRequest('DELETE', url);
+		const response = await handleRequest('DELETE', url);
 	} catch (error) {
 		console.log('There was an error deleting the session: ' + error);
 	}
@@ -221,7 +221,7 @@ async function deleteUser(userId) {
 	const url = `/api/identity/v1/users/${userId}`;
 
 	try {
-		const response = await codeengine.sendRequest('DELETE', url);
+		const response = await handleRequest('DELETE', url);
 	} catch (error) {
 		console.log('There was an error deleting the user: ' + error);
 	}
@@ -230,37 +230,21 @@ async function deleteUser(userId) {
 //---------------------------TRANSFER-----------------------//
 
 async function transferContent(userId, newOwnerId) {
-	// Transfer Datasets
-	const datasets = await getDatasets(userId);
-	await transferDatasets(datasets, newOwnerId);
+	await transferDatasets(userId, newOwnerId);
 
-	// Transfer Cards
-	const cards = await getCards(userId);
-	await transferCards(cards, newOwnerId);
+	await transferCards(userId, newOwnerId);
 
-	// Transfer Alerts
-	const alerts = await getAlerts(userId);
-	await transferAlerts(alerts, newOwnerId);
+	await transferAlerts(userId, newOwnerId);
 
-	// Transfer Workflows
-	const workflows = await getWorkflows(userId);
-	await transferWorkflows(workflows, newOwnerId);
+	await transferWorkflows(userId, newOwnerId);
 
-	// Transfer Tasks
-	const tasks = await getTasks(userId);
-	await transferTasks(tasks, newOwnerId);
+	await transferTasks(userId, newOwnerId);
 
-	// Transfer Dataflows
-	const dataflows = await getDataflows(userId);
-	await transferDataflows(dataflows, newOwnerId);
+	await transferDataflows(userId, newOwnerId);
 
-	// Transfer App Studio Apps
-	const apps = await getAppStudio(userId);
-	await transferAppStudio(apps, newOwnerId);
+	await transferAppStudioApps(userId, newOwnerId);
 
-	// Transfer Pages
-	const pages = await getPages(userId);
-	await transferPages(pages, newOwnerId);
+	await transferPages(userId, newOwnerId);
 
 	// Transfer Scheduled Reports
 	const reports = await getScheduledReports(userId);
@@ -325,12 +309,12 @@ async function transferContent(userId, newOwnerId) {
 
 //-------------------------DataSets--------------------------//
 
-async function getDatasets(userId) {
-	let filteredDatasetList = [];
+async function transferDatasets(userId, newOwnerId) {
+	let datasets = [];
 
 	const url = '/api/data/ui/v3/datasources/search';
 	let offset = 0;
-	const count = 30;
+	const count = 100;
 	let moreData = true;
 
 	while (moreData) {
@@ -353,12 +337,12 @@ async function getDatasets(userId) {
 			}
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 
 		if (response.dataSources && response.dataSources.length > 0) {
 			// Extract ids and append to list
 			const ids = response.dataSources.map((dataset) => dataset.id);
-			filteredDatasetList.push(...ids);
+			datasets.push(...ids);
 
 			// Increment offset to get next page
 			offset += count;
@@ -372,32 +356,25 @@ async function getDatasets(userId) {
 			moreData = false;
 		}
 	}
-	return filteredDatasetList;
-}
-
-async function transferDatasets(datasets, newOwnerId) {
+	const body = {
+		responsibleUserId: newOwnerId
+	};
 	for (let i = 0; i < datasets.length; i++) {
-		const data = {
-			responsibleUserId: newOwnerId
-		};
-
-		const response = await codeengine.sendRequest(
+		await handleRequest(
 			'PUT',
 			`/api/data/v2/datasources/${datasets[i]}/responsibleUsers`,
-			data
+			body
 		);
-		console.log(response);
 	}
 }
 
 //----------------------Cards-------------------------//
 
-async function getCards(userId) {
+async function transferCards(userId, newOwnerId) {
 	const url = '/api/search/v1/query';
 
-	let filteresCardsList = [];
 	let offset = 0;
-	const count = 20;
+	const count = 50;
 	let moreData = true;
 
 	while (moreData) {
@@ -418,12 +395,28 @@ async function getCards(userId) {
 			entityList: [['card']]
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
 			const ids = response.searchObjects.map((card) => card.databaseId);
-			filteresCardsList.push(...ids);
+			const body = {
+				cardIds: ids,
+				cardOwners: [
+					{
+						id: `${newOwnerId}`,
+						type: 'USER'
+					}
+				],
+				note: '',
+				sendEmail: false
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/content/v1/cards/owners/add',
+				body
+			);
 
 			// Increment offset to get next page
 			offset += count;
@@ -436,30 +429,7 @@ async function getCards(userId) {
 			// No more data returned, stop loop
 			moreData = false;
 		}
-		//console.log(response);
 	}
-	return filteresCardsList;
-}
-
-async function transferCards(cards, newOwnerId) {
-	const data = {
-		cardIds: cards,
-		cardOwners: [
-			{
-				id: `${newOwnerId}`,
-				type: 'USER'
-			}
-		],
-		note: '',
-		sendEmail: false
-	};
-
-	const response = await codeengine.sendRequest(
-		'POST',
-		'/api/content/v1/cards/owners/add',
-		data
-	);
-	console.log(response);
 }
 
 // -----------------Alerts--------------------------//
@@ -469,27 +439,27 @@ async function transferCards(cards, newOwnerId) {
  * @param {string} userId - The ID of the user to get alerts for.
  * @returns {List<int>} List of alert IDs the user is subscribed to.
  */
-async function getAlerts(userId) {
+async function transferAlerts(userId, newOwnerId) {
 	let moreData = true;
 	let offset = 0;
-	const count = 20;
-	let alertList = [];
-
+	const limit = 50;
+	let alerts = [];
 	while (moreData) {
-		const url = `/api/social/v4/alerts?ownerId=${userId}&limit=20&offset=${offset}`;
-		const response = await codeengine.sendRequest('GET', url);
-		//console.log(response);
+		const response = await handleRequest(
+			'GET',
+			`/api/social/v4/alerts?ownerId=${userId}&limit=${limit}&offset=${offset}`
+		);
 
 		if (response.length > 0) {
 			// Extract ids and append to list
 			const ids = response.map((alert) => alert.id);
-			alertList.push(...ids);
+			alerts.push(...ids);
 
 			// Increment offset to get next page
-			offset += count;
+			offset += limit;
 
 			// If less than pageSize returned, this is the last page
-			if (response.length < count) {
+			if (response.length < limit) {
 				moreData = false;
 			}
 		} else {
@@ -497,20 +467,15 @@ async function getAlerts(userId) {
 			moreData = false;
 		}
 	}
-	return alertList;
-}
-
-async function transferAlerts(alerts, newOwnerId) {
-	const data = {
+	const body = {
 		alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }]
 	};
 	for (let i = 0; i < alerts.length; i++) {
-		const response = await codeengine.sendRequest(
+		await handleRequest(
 			'POST',
 			`/api/social/v4/alerts/${alerts[i]}/share`,
-			data
+			body
 		);
-		//console.log(response);
 	}
 }
 
@@ -521,9 +486,9 @@ async function transferAlerts(alerts, newOwnerId) {
  * @param {string} userId - The ID of the owner to search for.
  * @returns {Array<string>} List of workflow IDs owned by the user.
  */
-async function getWorkflows(userId) {
+async function transferWorkflows(userId, newOwnerId) {
 	const url = '/api/search/v1/query';
-	let filteredWorkflowList = [];
+	let workflows = [];
 	let offset = 0;
 	const count = 100;
 	let moreData = true;
@@ -544,13 +509,13 @@ async function getWorkflows(userId) {
 			]
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 		//console.log(response.searchObjects);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
 			const ids = response.searchObjects.map((workflow) => workflow.uuid);
-			filteredWorkflowList.push(...ids);
+			workflows.push(...ids);
 
 			// Increment offset to get next page
 			offset += count;
@@ -564,47 +529,42 @@ async function getWorkflows(userId) {
 			moreData = false;
 		}
 	}
-	return filteredWorkflowList;
-}
-
-async function transferWorkflows(workflows, newOwnerId) {
-	const data = { owner: newOwnerId };
+	const body = { owner: newOwnerId };
 
 	for (let i = 0; i < workflows; i++) {
 		const url = `/api/workflow/v1/models/${workflows[i]}`;
-
-		const response = await codeengine.sendRequest('PUT', url, data);
-		console.log(response);
+		await handleRequest('PUT', url, body);
 	}
 }
 
 //--------------------------Tasks--------------------------//
 
-async function getTasks(userId) {
-	const url = '/api/queues/v1/tasks/list?limit=100&offset=0';
-
-	let filteredTaskist = [];
+async function transferTasks(userId, newOwnerId) {
+	let tasks = [];
 	let offset = 0;
-	const count = 100;
+	const limit = 100;
 	let moreData = true;
-	const data = { assignedTo: [userId], status: ['OPEN'] };
 
 	while (moreData) {
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest(
+			'POST',
+			`/api/queues/v1/tasks/list?limit=${limit}&offset=${offset}`,
+			{ assignedTo: [userId], status: ['OPEN'] }
+		);
 
 		if (response && response.length > 0) {
 			// Extract ids and append to list
-			const tasks = response.map((task) => ({
+			const ids = response.map((task) => ({
 				id: task.id,
 				queueId: task.queueId
 			}));
-			filteredTaskist.push(...tasks);
+			tasks.push(...ids);
 
 			// Increment offset to get next page
-			offset += count;
+			offset += limit;
 
 			// If less than pageSize returned, this is the last page
-			if (response.length < count) {
+			if (response.length < limit) {
 				moreData = false;
 			}
 		} else {
@@ -612,25 +572,21 @@ async function getTasks(userId) {
 			moreData = false;
 		}
 	}
-	return filteredTaskist;
-}
-
-async function transferTasks(tasks, newOwnerId) {
 	for (let i = 0; i < tasks.length; i++) {
 		const url = `/api/queues/v1/${tasks[i].queueId}/tasks/${tasks[i].id}/assign`;
 
-		const data = { userId: newOwnerId, type: 'USER', taskIds: [tasks[i].id] };
+		const body = { userId: newOwnerId, type: 'USER', taskIds: [tasks[i].id] };
 
-		const response = await codeengine.sendRequest('PUT', url, data);
+		await handleRequest('PUT', url, body);
 	}
 }
 
 //----------------------------DataFlows-----------------------//
 
-async function getDataflows(userId) {
+async function transferDataflows(userId, newOwnerId) {
 	const url = '/api/search/v1/query';
 
-	let filteredDataflowList = [];
+	let dataflows = [];
 	let offset = 0;
 	const count = 100;
 	let moreData = true;
@@ -650,15 +606,13 @@ async function getDataflows(userId) {
 			offset: offset
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 		//console.log(response.searchObjects);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
-			const dataflows = response.searchObjects.map(
-				(dataflow) => dataflow.databaseId
-			);
-			filteredDataflowList.push(...dataflows);
+			const ids = response.searchObjects.map((dataflow) => dataflow.databaseId);
+			dataflows.push(...ids);
 
 			// Increment offset to get next page
 			offset += count;
@@ -672,42 +626,43 @@ async function getDataflows(userId) {
 			moreData = false;
 		}
 	}
-	return filteredDataflowList;
-}
-
-async function transferDataflows(dataflows, newOwnerId) {
-	const data = { responsibleUserId: newOwnerId };
+	const body = { responsibleUserId: newOwnerId };
 
 	for (let i = 0; i < dataflows.length; i++) {
 		const url = `/api/dataprocessing/v1/dataflows/${dataflows[i]}/patch`;
 
-		const response = codeengine.sendRequest('PUT', url, data);
+		await handleRequest('PUT', url, body);
 	}
 }
 
 //------------------------------------App Studio--------------------------//
 
-async function getAppStudio(userId) {
-	let filteredAppList = [];
-	const limit = 100;
+async function transferAppStudioApps(userId, newOwnerId) {
+	const limit = 30;
 	let skip = 0;
 	let moreData = true;
 	const data = {};
 
 	while (moreData) {
 		const url = `/api/content/v1/dataapps/adminsummary?limit=${limit}&skip=${skip}`;
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 
 		if (
 			response.dataAppAdminSummaries &&
 			response.dataAppAdminSummaries.length > 0
 		) {
 			// Extract ids and append to list
-			const filteredResponse = response.dataAppAdminSummaries
+			const apps = response.dataAppAdminSummaries
 				.filter((item) => item.owners.some((owner) => owner.id == userId))
 				.map((item) => item.dataAppId);
-			filteredAppList.push(...filteredResponse);
 
+			const body = {
+				note: '',
+				entityIds: apps,
+				owners: [{ type: 'USER', id: newOwnerId }],
+				sendEmail: false
+			};
+			await handleRequest('PUT', '/api/content/v1/dataapps/bulk/owners', body);
 			// Increment offset to get next page
 			skip += limit;
 
@@ -720,30 +675,14 @@ async function getAppStudio(userId) {
 			moreData = false;
 		}
 	}
-	return filteredAppList;
-}
-
-async function transferAppStudio(apps, newOwnerId) {
-	const url = '/api/content/v1/dataapps/bulk/owners';
-
-	for (let i = 0; i < apps.length; i++) {
-		const data = {
-			note: '',
-			entityIds: [`${apps[i]}`],
-			owners: [{ type: 'USER', id: newOwnerId }],
-			sendEmail: false
-		};
-		const response = await codeengine.sendRequest('PUT', url, data);
-	}
 }
 
 //-----------------------------------Pages------------------------------//
 
-async function getPages(userId) {
+async function transferPages(userId, newOwnerId) {
 	const url = '/api/search/v1/query';
-	let filteredPageList = [];
 	let offset = 0;
-	const count = 20;
+	const count = 50;
 	let moreData = true;
 
 	while (moreData) {
@@ -764,14 +703,21 @@ async function getPages(userId) {
 			entityList: [['page']]
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 		//console.log(response.searchObjects);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
 			const pages = response.searchObjects.map((page) => page.databaseId);
-			filteredPageList.push(...pages);
 
+			for (let i = 0; i < pages.length; i++) {
+				const body = {
+					owners: [{ id: newOwnerId, type: 'USER' }],
+					pageIds: pages
+				};
+
+				await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
+			}
 			// Increment offset to get next page
 			offset += count;
 
@@ -784,58 +730,85 @@ async function getPages(userId) {
 			moreData = false;
 		}
 	}
-	return filteredPageList;
-}
-
-async function transferPages(pages, newOwnerId) {
-	const url = '/api/content/v1/pages/bulk/owners';
-
-	for (let i = 0; i < pages.length; i++) {
-		const data = `{"owners":[{"id":${newOwnerId},"type":"USER"}],"pageIds":[${pages[i]}]}`;
-
-		const response = await codeengine.sendRequest('PUT', url, data);
-		console.log(response);
-	}
 }
 
 //---------------------------------Scheduled Reports--------------------------------//
 
-async function getScheduledReports(userId) {
-	const url = `/api/content/v1/reportschedules?OWNER=${userId}`;
-	let reportsList = [];
+async function transferScheduledReports(userId, newOwnerId) {
+	const limit = 75;
+	let skip = 0;
+	let moreData = true;
+	let resources = [];
+	const url = 'api/query/v1/execute/b7306441-b8a7-481c-baaf-4fffadb0ff61';
+	const body = {
+		querySource: 'data_table',
+		useCache: true,
+		query: {
+			columns: [
+				{
+					exprType: 'COLUMN',
+					column: 'Report Id'
+				},
+				{
+					exprType: 'COLUMN',
+					column: 'Column 2'
+				}
+			],
+			limit: {
+				limit: 10000,
+				offset: 0
+			},
+			orderByColumns: [
+				{
+					expression: {
+						exprType: 'COLUMN',
+						column: 'Column 1'
+					},
+					order: 'ASCENDING'
+				}
+			],
+			groupByColumns: [
+				{
+					exprType: 'COLUMN',
+					column: 'Column 1'
+				}
+			],
+			where: {
+				not: false,
+				exprType: 'IN',
+				leftExpr: {
+					exprType: 'COLUMN',
+					column: 'Column 1'
+				},
+				selectSet: [
+					{
+						exprType: 'STRING_VALUE',
+						value: '<string>'
+					}
+				]
+			},
+			having: null
+		},
+		context: {
+			calendar: 'StandardCalendar',
+			features: {
+				PerformTimeZoneConversion: true,
+				AllowNullValues: true,
+				TreatNumbersAsStrings: true
+			}
+		},
+		// Used for Views Explorer, not the regular Data table
+		viewTemplate: null,
+		tableAliases: null
+	};
 
-	try {
-		const response = await codeengine.sendRequest('GET', url);
-		const reports = response.map((report) => report.title);
-		reportsList.push(...reports);
-
-		return reportsList;
-	} catch (error) {
-		console.log(error);
-	}
-}
-
-async function transferScheduledReports(reports, newOwnerId) {
+	const body = {
+		ownerId: newOwnerId
+	};
 	for (let i = 0; i < reports.length; i++) {
-		const data = {
-			ownerId: newOwnerId
-		};
 		const url = `/api/content/v1/reportschedules/${reports[i]}`;
-		const response = await codeengine.sendRequest('PUT', url, data);
+		await handleRequest('PUT', url, body);
 	}
-
-	//const url = '/api/content/v1/reportschedules/86';
-
-	//const response = await codeengine.sendRequest('PUT', url, data);
-	//console.log(response);
-
-	// for (let i = 0; i < reportsList.length; i++) {
-	//   const url = `/api/content/v1/reportschedules/${reportsList[i].id}`;
-
-	//   const data = reportsList[i];
-	// }
-
-	// const data = {"attachmentInclude":false,"id":119,"schedule":{"frequency":"DAILY","ownerId":254530483,"daysToRun":"1,2,3,4,5,6,7","hourOfDay":"14","minOfHour":"15","expirationDate":1735973999000,"timezone":"Asia/Calcutta","additionalRecipients":[{"type":"USER","value":"795679564"},{"type":"USER","value":"85020081"},{"type":"USER","value":"254530483"}],"nextRunDate":1728072900000,"startDate":1727416800000,"unsubscribedRecipients":null,"enabled":false,"embedReport":false,"embedUrn":null},"ownerId":254530483,"subject":"Example Sales Data Report","viewId":768500629};
 }
 
 //---------------------------------------------Goals------------------------------------------------//
@@ -844,7 +817,7 @@ async function getCurrentPeriod() {
 	const url = '/api/social/v2/objectives/periods?all=true';
 
 	try {
-		const response = await codeengine.sendRequest('GET', url);
+		const response = await handleRequest('GET', url);
 		const currentPeriod = response.find((period) => period.current);
 		return currentPeriod.id;
 	} catch (error) {
@@ -855,7 +828,7 @@ async function getCurrentPeriod() {
 async function getGoals(userId, periodId) {
 	const url = `api/social/v2/objectives/profile?filterKeyResults=false&includeSampleGoal=false&periodId=${periodId}&ownerId=${userId}`;
 
-	const response = await codeengine.sendRequest('GET', url);
+	const response = await handleRequest('GET', url);
 	return response.personal;
 }
 
@@ -874,7 +847,7 @@ async function transferGoals(goals, newOwnerId) {
 
 		const data = goals[i];
 
-		const response = await codeengine.sendRequest('PUT', url, data);
+		const response = await handleRequest('PUT', url, data);
 		console.log(response);
 	}
 }
@@ -889,7 +862,7 @@ async function getGroups(userId) {
 
 	while (moreData) {
 		const url = `/api/content/v2/groups/grouplist?owner=${userId}&limit=${limit}&offset=${offset}`;
-		const response = await codeengine.sendRequest('GET', url);
+		const response = await handleRequest('GET', url);
 
 		if (response && response.length > 0) {
 			// Extract ids and append to list
@@ -921,7 +894,7 @@ async function transferGroups(groups, userId, newOwnerId) {
 			removeOwners: [{ type: 'USER', id: userId }]
 		});
 	}
-	const response = await codeengine.sendRequest('PUT', url, data);
+	const response = await handleRequest('PUT', url, data);
 }
 
 //-----------------------------------------AppDB--------------------------------//
@@ -948,7 +921,7 @@ async function getAppDbCollections(userId) {
 			pageNumber: pageNumber
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 
 		if (response.collections && response.collections.length > 0) {
 			// Extract ids and append to list
@@ -976,7 +949,7 @@ async function transferAppDbCollections(collections, newOwnerId) {
 
 		const data = { id: collections[i], owner: newOwnerId };
 
-		await codeengine.sendRequest('PUT', url, data);
+		await handleRequest('PUT', url, data);
 	}
 }
 
@@ -1007,7 +980,7 @@ async function getBeastModes(userId) {
 			offset: offset
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 		//console.log(response.results);
 
 		if (response.results && response.results.length > 0) {
@@ -1074,7 +1047,7 @@ async function getAccounts(userId) {
 			entityList: [['account']]
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 		if (
 			response.searchResultsMap &&
 			response.searchResultsMap.account.length > 0
@@ -1107,7 +1080,7 @@ async function transferAccounts(accountIds, newOwnerId) {
 
 		const data = { type: 'USER', id: newOwnerId, accessLevel: 'OWNER' };
 
-		const response = await codeengine.sendRequest('PUT', url, data);
+		const response = await handleRequest('PUT', url, data);
 	}
 }
 
@@ -1136,7 +1109,7 @@ async function getJupyterWorkspaces(userId) {
 			limit: limit
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 		//console.log(response);
 
 		if (response.workspaces && response.workspaces.length > 0) {
@@ -1163,7 +1136,7 @@ async function transferJupyterWorkspaces(jupyterWorkspaceIds, newOwnerId) {
 	const data = { newOwnerId };
 	for (let i = 0; i < jupyterWorkspaceIds.length; i++) {
 		const url = `/api/datascience/v1/workspaces/${jupyterWorkspaceIds[i]}/ownership`;
-		await codeengine.sendRequest('PUT', url, data);
+		await handleRequest('PUT', url, data);
 	}
 }
 
@@ -1194,7 +1167,7 @@ async function getCodeEnginePackages(userId) {
 			facetValuesToInclude: []
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 
 		if (
 			response.searchResultsMap.package &&
@@ -1226,7 +1199,7 @@ async function transferCodeEnginePackages(codeEnginePackageIds, newOwnerId) {
 	const data = { owner: parseInt(newOwnerId) };
 	for (let i = 0; i < codeEnginePackageIds.length; i++) {
 		const url = `/api/codeengine/v2/packages/${codeEnginePackageIds[i]}`;
-		await codeengine.sendRequest('PUT', url, data);
+		await handleRequest('PUT', url, data);
 	}
 }
 
@@ -1256,7 +1229,7 @@ async function getFilesets(userId) {
 	while (moreData) {
 		const url = `/api/files/v1/filesets/search?offset=${offset}&limit=${limit}`;
 
-		const response = await codeengine.sendRequest('POST', url, body);
+		const response = await handleRequest('POST', url, body);
 		if (response.filesets && response.filesets.length > 0) {
 			// Extract ids and append to list
 			const ids = response.filesets.map((fileset) => fileset.id);
@@ -1282,7 +1255,7 @@ async function transferFilesets(filesetIds, newOwnerId) {
 
 	for (let i = 0; i < filesetIds.length; i++) {
 		const url = `/api/files/v1/filesets/${filesetIds[i]}/ownership`;
-		await codeengine.sendRequest('POST', url, body);
+		await handleRequest('POST', url, body);
 	}
 }
 
@@ -1295,11 +1268,11 @@ async function getPublications(userId) {
 	let publicationList = [];
 	const url = '/api/publish/v2/publications';
 
-	const response = await codeengine.sendRequest('GET', url);
+	const response = await handleRequest('GET', url);
 	for (let i = 0; i < response.length; i++) {
 		const publicationId = response[i].id;
 		const publicationUrl = `/api/publish/v2/publications/${publicationId}`;
-		const response2 = await codeengine.sendRequest('GET', publicationUrl);
+		const response2 = await handleRequest('GET', publicationUrl);
 		if (response2.content.userId == userId) {
 			publicationList.push(publicationId);
 		}
@@ -1313,12 +1286,12 @@ async function getPublications(userId) {
 async function getSubscriptions(userId) {
 	const url = 'api/publish/v2/subscriptions/summaries';
 
-	const subscriptionsAll = await codeengine.sendRequest('GET', url);
+	const subscriptionsAll = await handleRequest('GET', url);
 	let subscriptionsList = [];
 	for (let i = 0; i < subscriptionsAll.length; i++) {
 		const subscriptionUrl = `api/publish/v2/subscriptions/${subscriptionsAll[i].subscriptionId}/share`;
 
-		const subscription = await codeengine.sendRequest('GET', subscriptionUrl);
+		const subscription = await handleRequest('GET', subscriptionUrl);
 		if (subscription.userId == userId) {
 			subscriptionsList.push(subscription);
 		}
@@ -1366,7 +1339,7 @@ async function getRepositories(userId) {
 			}
 		};
 
-		const response = await codeengine.sendRequest('POST', url, data);
+		const response = await handleRequest('POST', url, data);
 
 		if (response.repositories && response.repositories.length > 0) {
 			// Extract ids and append to list
@@ -1437,7 +1410,7 @@ async function getApprovals(userId, newOwnerId) {
 		}
 	];
 
-	const response = await codeengine.sendRequest('POST', url, data);
+	const response = await handleRequest('POST', url, data);
 	const responseApprovals = response[1].data.workflowSearch.edges;
 
 	console.log(response[1].data.workflowSearch.edges[0].node.approval);
@@ -1488,7 +1461,7 @@ async function getCustomApps(userId, newOwnerId) {
 
 	while (moreData) {
 		const url = `/api/apps/v1/designs?checkAdminAuthority=true&${limit}&offset=${offset}`;
-		const response = await codeengine.sendRequest('GET', url);
+		const response = await handleRequest('GET', url);
 
 		for (let i = 0; i < response.length; i++) {
 			if (response[i].owner == userId) {
@@ -1509,7 +1482,7 @@ async function transferCustomApps(customAppIds, newOwnerId) {
 
 	const data = [newOwnerId];
 
-	const response = await codeengine.sendRequest('POST', url, data);
+	const response = await handleRequest('POST', url, data);
 }
 
 //-------------------------------------AI Models--------------------------------//
@@ -1529,7 +1502,7 @@ async function getAiModels(userId, newOwnerId) {
 		sortMetricMap: {}
 	};
 
-	const response = await codeengine.sendRequest('POST', url, data);
+	const response = await handleRequest('POST', url, data);
 	const modelsList = response.models;
 
 	for (let i = 0; i < modelsList.length; i++) {
@@ -1543,7 +1516,7 @@ async function aiModelChangeOwner(modelId, newOwnerId) {
 
 	const data = { userId: newOwnerId };
 
-	const response = await codeengine.sendRequest('POST', url, data);
+	const response = await handleRequest('POST', url, data);
 	console.log(response);
 }
 
@@ -1560,7 +1533,7 @@ async function getAiProjects(userId, newOwnerId) {
 		dateFilters: {}
 	};
 
-	const response = await codeengine.sendRequest('POST', url, data);
+	const response = await handleRequest('POST', url, data);
 	console.log(response);
 	const projectsList = response.projects;
 
@@ -1575,6 +1548,6 @@ async function aiProjectChangeOwner(projectId, newOwnerId) {
 
 	const data = { userId: newOwnerId };
 
-	const response = await codeengine.sendRequest('POST', url, data);
+	const response = await handleRequest('POST', url, data);
 	console.log(response);
 }
