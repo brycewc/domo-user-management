@@ -201,9 +201,11 @@ async function deleteUserSessions(userId) {
 
 	// Find sessions assigned to the specified user
 	const sessionsToDelete = response.filter((s) => s.userId === userId);
-
-	// Delete all sessions concurrently and wait for completion
-	await Promise.all(sessionsToDelete.map((s) => deleteSession(s.id)));
+	if (sessionsToDelete.length > 0) {
+		// Delete all sessions concurrently and wait for completion
+		await Promise.all(sessionsToDelete.map((s) => deleteSession(s.id)));
+	}
+	return true;
 }
 
 /**
@@ -288,7 +290,7 @@ async function transferContent(userId, newOwnerId) {
 //-------------------------DataSets--------------------------//
 
 async function transferDatasets(userId, newOwnerId) {
-	let datasets = [];
+	const datasets = [];
 
 	const url = '/api/data/ui/v3/datasources/search';
 	let offset = 0;
@@ -334,16 +336,20 @@ async function transferDatasets(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
+
 	const body = {
 		responsibleUserId: newOwnerId
 	};
+
+	const batch = [];
+	const date = new Date().toISOString();
+
 	for (let i = 0; i < datasets.length; i++) {
-		await handleRequest(
-			'PUT',
-			`/api/data/v2/datasources/${datasets[i]}/responsibleUsers`,
-			body
-		);
+		const endpoint = `/api/data/v2/datasources/${datasets[i]}/responsibleUsers`;
+		await handleRequest('PUT', endpoint, body);
 	}
+
+	await logTransfers(userId, newOwnerId, 'DATASET', datasets);
 }
 
 //----------------------Cards-------------------------//
@@ -382,7 +388,7 @@ async function transferCards(userId, newOwnerId) {
 				cardIds: ids,
 				cardOwners: [
 					{
-						id: `${newOwnerId}`,
+						id: newOwnerId,
 						type: 'USER'
 					}
 				],
@@ -391,6 +397,8 @@ async function transferCards(userId, newOwnerId) {
 			};
 
 			await handleRequest('POST', '/api/content/v1/cards/owners/add', body);
+
+			await logTransfers(userId, newOwnerId, 'CARD', ids);
 
 			// Increment offset to get next page
 			offset += count;
@@ -418,6 +426,7 @@ async function transferAlerts(userId, newOwnerId) {
 	let offset = 0;
 	const limit = 50;
 	let alerts = [];
+
 	while (moreData) {
 		const response = await handleRequest(
 			'GET',
@@ -441,16 +450,17 @@ async function transferAlerts(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
+
 	const body = {
 		alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }]
 	};
+
 	for (let i = 0; i < alerts.length; i++) {
-		await handleRequest(
-			'POST',
-			`/api/social/v4/alerts/${alerts[i]}/share`,
-			body
-		);
+		const endpoint = `/api/social/v4/alerts/${alerts[i]}/share`;
+		await handleRequest('POST', endpoint, body);
 	}
+
+	await logTransfers(userId, newOwnerId, 'ALERT', alerts);
 }
 
 //---------------------------Workflows--------------------------------//
@@ -502,12 +512,15 @@ async function transferWorkflows(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
+
 	const body = { owner: newOwnerId };
 
-	for (let i = 0; i < workflows; i++) {
+	for (let i = 0; i < workflows.length; i++) {
 		const url = `/api/workflow/v1/models/${workflows[i]}`;
 		await handleRequest('PUT', url, body);
 	}
+
+	await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflows);
 }
 
 //--------------------------Tasks--------------------------//
@@ -545,13 +558,17 @@ async function transferTasks(userId, newOwnerId) {
 			moreData = false;
 		}
 	}
+	const taskIdList = [];
+
 	for (let i = 0; i < tasks.length; i++) {
 		const url = `/api/queues/v1/${tasks[i].queueId}/tasks/${tasks[i].id}/assign`;
-
 		const body = { userId: newOwnerId, type: 'USER', taskIds: [tasks[i].id] };
+		taskIdList.push(tasks[i].id);
 
 		await handleRequest('PUT', url, body);
 	}
+
+	await logTransfers(userId, newOwnerId, 'PROJECT_TASK', taskIdList);
 }
 
 //----------------------------DataFlows-----------------------//
@@ -604,6 +621,7 @@ async function transferDataflows(userId, newOwnerId) {
 
 		await handleRequest('PUT', url, body);
 	}
+	await logTransfers(userId, newOwnerId, 'DATAFLOW', dataflows);
 }
 
 //------------------------------------App Studio--------------------------//
@@ -625,15 +643,23 @@ async function transferAppStudioApps(userId, newOwnerId) {
 			// Extract ids and append to list
 			const apps = response.dataAppAdminSummaries
 				.filter((item) => item.owners.some((owner) => owner.id == userId))
-				.map((item) => item.dataAppId);
+				.map((item) => item.dataAppId.toString());
+			if (apps.length > 0) {
+				const body = {
+					note: '',
+					entityIds: apps,
+					owners: [{ type: 'USER', id: parseInt(newOwnerId) }],
+					sendEmail: false
+				};
 
-			const body = {
-				note: '',
-				entityIds: apps,
-				owners: [{ type: 'USER', id: newOwnerId }],
-				sendEmail: false
-			};
-			await handleRequest('PUT', '/api/content/v1/dataapps/bulk/owners', body);
+				await handleRequest(
+					'PUT',
+					'/api/content/v1/dataapps/bulk/owners',
+					body
+				);
+
+				await logTransfers(userId, newOwnerId, 'DATA_APP', apps);
+			}
 			// Increment offset to get next page
 			skip += limit;
 
@@ -689,6 +715,7 @@ async function transferPages(userId, newOwnerId) {
 
 				await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
 			}
+			await logTransfers(userId, newOwnerId, 'PAGE', pages);
 			// Increment offset to get next page
 			offset += count;
 
@@ -757,14 +784,16 @@ async function transferScheduledReports(userId, newOwnerId) {
 	const reports = response.rows;
 
 	for (let i = 0; i < reports.length; i++) {
-		await handleRequest(
-			'PUT',
-			`/api/content/v1/reportschedules/${reports[i][0]}`,
-			{
-				ownerId: newOwnerId
-			}
-		);
+		const endpoint = `/api/content/v1/reportschedules/${reports[i][0]}`;
+
+		await handleRequest('PUT', endpoint, { ownerId: newOwnerId });
 	}
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'REPORT_SCHEDULE',
+		reports.map((r) => r[0])
+	);
 }
 
 //---------------------------------------------Goals------------------------------------------------//
@@ -772,7 +801,7 @@ async function transferScheduledReports(userId, newOwnerId) {
 async function getCurrentPeriod() {
 	const response = await handleRequest(
 		'GET',
-		'/api/social/v2/objectives/periods?all=true'
+		'/api/social/v1/objectives/periods?all=true'
 	);
 	const currentPeriod = response.find((period) => period.current);
 	return currentPeriod.id;
@@ -798,6 +827,12 @@ async function transferGoals(userId, newOwnerId, periodId) {
 
 		await handleRequest('PUT', goalUrl, body);
 	}
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'GOAL',
+		goals.map((goal) => goal.id)
+	);
 }
 
 //-----------------------------------------Groups----------------------------------------//
@@ -821,6 +856,14 @@ async function transferGroups(userId, newOwnerId) {
 			}));
 
 			await handleRequest('PUT', '/api/content/v2/groups/access', body);
+
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'GROUP',
+				response.map((group) => group.id)
+			);
+
 			// Increment offset to get next page
 			offset += limit;
 
@@ -869,6 +912,12 @@ async function transferAppDbCollections(userId, newOwnerId) {
 
 				await handleRequest('PUT', url, body);
 			}
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'COLLECTION',
+				response.map((collection) => collection.id)
+			);
 			// Increment offset to get next page
 			pageNumber++;
 
@@ -918,6 +967,14 @@ async function transferBeastModes(userId, newOwnerId) {
 				update: beastModes
 			};
 			await handleRequest('PUT', '/api/query/v1/functions/bulk/template', body);
+
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'BEAST_MODE_FORMULA',
+				response.results.map((beastMode) => beastMode.id)
+			);
+
 			// Increment offset to get next page
 			offset += limit;
 
@@ -987,6 +1044,8 @@ async function transferAccounts(userId, newOwnerId) {
 
 		await handleRequest('PUT', transferUrl, body);
 	}
+
+	await logTransfers(userId, newOwnerId, 'ACCOUNT', accountIds);
 }
 
 //---------------------------Jupyter Workspaces---------------------//
@@ -1041,6 +1100,7 @@ async function transferJupyterWorkspaces(userId, newOwnerId) {
 		const url = `/api/datascience/v1/workspaces/${jupyterWorkspaceIds[i]}/ownership`;
 		await handleRequest('PUT', url, { newOwnerId });
 	}
+	await logTransfers(userId, newOwnerId, 'WORKSPACES', jupyterWorkspaceIds);
 }
 
 //------------------------------Code Engine Packages--------------------------//
@@ -1097,6 +1157,12 @@ async function transferCodeEnginePackages(userId, newOwnerId) {
 		const url = `/api/codeengine/v2/packages/${codeEnginePackageIds[i]}`;
 		await handleRequest('PUT', url, { owner: parseInt(newOwnerId) });
 	}
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'CODEENGINE_PACKAGE',
+		codeEnginePackageIds
+	);
 }
 
 //---------------------------------------FileSets--------------------------------------------//
@@ -1111,21 +1177,22 @@ async function transferFilesets(userId, newOwnerId) {
 		filters: [
 			{
 				field: 'owner',
-				idList: [userId],
+				value: [userId],
 				not: false,
 				operator: 'EQUALS'
 			}
 		],
-		fieldSort: {
-			field: 'updated',
-			order: 'DESC'
-		},
+		fieldSort: [
+			{
+				field: 'updated',
+				order: 'DESC'
+			}
+		],
 		dateFilters: []
 	};
 
 	while (moreData) {
 		const url = `/api/files/v1/filesets/search?offset=${offset}&limit=${limit}`;
-
 		const response = await handleRequest('POST', url, data);
 
 		if (response.filesets && response.filesets.length > 0) {
@@ -1150,6 +1217,7 @@ async function transferFilesets(userId, newOwnerId) {
 		const url = `/api/files/v1/filesets/${filesetIds[i]}/ownership`;
 		await handleRequest('POST', url, { userId: parseInt(newOwnerId) });
 	}
+	await logTransfers(userId, newOwnerId, 'FILESET', filesetIds);
 }
 
 //--------------------------------------Domo Everywhere Publications------------------------------------------//
@@ -1221,6 +1289,12 @@ async function transferSubscriptions(userId, newOwnerId) {
 			await handleRequest('PUT', url, body);
 		}
 	}
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'SUBSCRIPTION',
+		subscriptions.map((item) => item.subscription.publicationId)
+	);
 }
 
 //--------------------------------------------------Sandbox Repositories---------------------------------//
@@ -1283,13 +1357,13 @@ async function transferRepositories(userId, newOwnerId) {
 
 		await handleRequest('POST', url, body);
 	}
+	await logTransfers(userId, newOwnerId, 'REPOSITORY', repositoryIds);
 }
 
 //-----------------------------------------Approvals--------------------------------------//
 
 async function transferApprovals(userId, newOwnerId) {
 	const url = '/api/synapse/approval/graphql';
-	const approvalList = [];
 
 	const data = [
 		{
@@ -1348,6 +1422,12 @@ async function transferApprovals(userId, newOwnerId) {
 			await handleRequest('POST', url, transferBody);
 		}
 	}
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'APPROVAL',
+		responseApprovals.map((id) => id.node.approval.id)
+	);
 }
 
 //--------------------------------Custom Apps (Bricks and Pro Code Apps)-------------------------------------//
@@ -1369,6 +1449,8 @@ async function transferCustomApps(userId, newOwnerId) {
 					await handleRequest('POST', transferUrl, body);
 				}
 			}
+			const appIds = response.map((app) => app.id);
+			await logTransfers(userId, newOwnerId, 'APP', appIds);
 
 			if (response.length < limit) {
 				moreData = false;
@@ -1431,6 +1513,7 @@ async function transferAiModels(userId, newOwnerId) {
 		const data = { userId: newOwnerId };
 		await handleRequest('POST', url, data);
 	}
+	await logTransfers(userId, newOwnerId, 'MODELS', models);
 }
 
 //-----------------------------------AI Projects----------------------------------//
@@ -1481,5 +1564,69 @@ async function transferAiProjects(userId, newOwnerId) {
 		const url = `/api/datascience/ml/v1/projects/${projects[i].id}/ownership`;
 		const data = { userId: newOwnerId };
 		await handleRequest('POST', url, data);
+	}
+	await logTransfers(userId, newOwnerId, 'PROJECT', projects);
+}
+
+async function appendToDataset(csvValues) {
+	const uploadUrl = `api/data/v3/datasources/2df07ed5-03ca-44be-b47b-fe936c431337/uploads`;
+	try {
+		// Start upload session
+		const { uploadId } = await codeengine.sendRequest('POST', uploadUrl, {
+			action: 'APPEND',
+			message: 'Uploading',
+			appendId: 'latest'
+		});
+
+		// Upload data part
+		const partsUrl = uploadUrl + `/${uploadId}/parts/1`;
+		//const partsUrl = UPLOADS_PARTS_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+		await codeengine.sendRequest('put', partsUrl, csvValues, null, 'text/csv');
+
+		// Commit upload
+		const commitUrl = uploadUrl + `/${uploadId}/commit`;
+		//const commitUrl = UPLOADS_COMMIT_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+
+		return await codeengine.sendRequest(
+			'PUT',
+			commitUrl,
+			{
+				index: true,
+				appendId: 'latest',
+				message: 'Append successful'
+			},
+			null,
+			'application/json'
+		);
+	} catch (error) {
+		console.error('Append failed:', error);
+		return false; // Simple boolean return for success/failure
+	}
+}
+
+async function logTransfers(userId, newOwnerId, type, ids) {
+	const BATCH_SIZE = 50;
+	let batch = [];
+	const date = new Date().toISOString();
+
+	for (const id of ids) {
+		batch.push(`${userId},${newOwnerId},${type},${id},${date}`);
+
+		if (batch.length >= BATCH_SIZE) {
+			try {
+				await appendToDataset(batch.join('\n') + '\n');
+			} catch (error) {
+				console.error('Logging failed:', error);
+			}
+			batch = [];
+		}
+	}
+
+	if (batch.length > 0) {
+		try {
+			await appendToDataset(batch.join('\n') + '\n');
+		} catch (error) {
+			console.error('Logging failed:', error);
+		}
 	}
 }
