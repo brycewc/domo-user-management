@@ -20,145 +20,6 @@ class Helpers {
 	}
 }
 
-const { handleRequest } = Helpers;
-
-async function getUsersForDataset() {
-	var users = [];
-	var offset = 0;
-	const limit = 100;
-	var count;
-	var moreData = true;
-	const url = `/api/identity/v1/users/search?explain=false&cacheBuster=${new Date().getTime()}`;
-	var body = {
-		showCount: true,
-		count: false,
-		includeDeleted: true,
-		onlyDeleted: false,
-		includeSupport: true,
-		limit: limit,
-		offset: offset,
-		sort: {
-			field: 'created',
-			order: 'ASC'
-		},
-		filters: [],
-		ids: [],
-		attributes: [
-			'id',
-			'displayName',
-			'department',
-			'userName',
-			'emailAddress',
-			'phoneNumber',
-			'deskPhoneNumber',
-			'title',
-			'timeZone',
-			'hireDate',
-			'modified',
-			'created',
-			'alternateEmail',
-			'employeeLocation',
-			'employeeNumber',
-			'employeeId',
-			'locale',
-			'roleId',
-			'reportsTo',
-			'isAnonymous',
-			'isSystemUser',
-			'isPending',
-			'isActive',
-			'invitorUserId',
-			'lastActivity'
-		],
-		parts: ['DETAILED', 'GROUPS', 'ROLE', 'MINIMAL']
-	};
-	while (moreData) {
-		const response = await handleRequest('POST', url, body);
-
-		if (response.users && response.users.length > 0) {
-			users.push(...response.users);
-			count += response.users.length;
-			// Increment offset to get next page
-			offset += limit;
-			body.offset = offset;
-
-			if (count >= response.count) {
-				moreData = false;
-			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
-		}
-	}
-	return users;
-}
-
-async function uploadUsersToDataset(users, dataset) {
-	const transformedUsers = users.map((user) => {
-		user.attributes.forEach((attribute) => {
-			const key = attribute.key;
-			const value = attribute.values[0]; // Assuming values array always has one element
-			user[key] = value;
-		});
-		delete user.attributes;
-		delete user.role;
-	});
-
-	const csvString = [
-		[
-			'id',
-			'displayName',
-			'roleId',
-			'emailAddress',
-			'userName',
-			'timeZone',
-			'modified',
-			'created',
-			'isAnonymous',
-			'isSystemUser',
-			'isPending',
-			'isActive',
-			'avatarKey'
-		],
-		...transformedUsers.map((user) => [
-			user.id,
-			user.displayName,
-			user.roleId,
-			user.emailAddress,
-			user.userName,
-			user.timeZone,
-			user.modified,
-			user.created,
-			user.isAnonymous,
-			user.isSystemUser,
-			user.isPending,
-			user.isActive,
-			user.avatarKey
-		])
-	]
-		.map((e) => e.join(','))
-		.join('\n');
-
-	const createUploadResponse = await handleRequest(
-		'POST',
-		`/api/data/v3/datasources/${dataset}/uploads`,
-		{ action: null, appendId: null }
-	);
-	const uploadId = createUploadResponse.uploadId;
-
-	const uploadResponse = await handleRequest(
-		'PUT',
-		`/api/data/v3/datasources/${dataset}/uploads/${uploadId}/parts/1`,
-		csvString
-	);
-	const commitResponse = await handleRequest(
-		'PUT',
-		`/api/data/v3/datasources/${dataset}/uploads/${uploadId}/commit`,
-		{ action: 'REPLACE', index: true }
-	);
-	return commitResponse;
-}
-
 /**
  * Fetch detailed information for a specific user by Domo user ID.
  *
@@ -232,6 +93,69 @@ async function deleteUser(userId) {
 	await handleRequest('DELETE', url);
 }
 
+async function appendToDataset(csvValues) {
+	const uploadUrl = `api/data/v3/datasources/2df07ed5-03ca-44be-b47b-fe936c431337/uploads`;
+	try {
+		// Start upload session
+		const { uploadId } = await codeengine.sendRequest('POST', uploadUrl, {
+			action: 'APPEND',
+			message: 'Uploading',
+			appendId: 'latest'
+		});
+
+		// Upload data part
+		const partsUrl = uploadUrl + `/${uploadId}/parts/1`;
+		//const partsUrl = UPLOADS_PARTS_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+		await codeengine.sendRequest('put', partsUrl, csvValues, null, 'text/csv');
+
+		// Commit upload
+		const commitUrl = uploadUrl + `/${uploadId}/commit`;
+		//const commitUrl = UPLOADS_COMMIT_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+
+		return await codeengine.sendRequest(
+			'PUT',
+			commitUrl,
+			{
+				index: true,
+				appendId: 'latest',
+				message: 'Append successful'
+			},
+			null,
+			'application/json'
+		);
+	} catch (error) {
+		console.error('Append failed:', error);
+		return false; // Simple boolean return for success/failure
+	}
+}
+
+async function logTransfers(userId, newOwnerId, type, ids) {
+	const BATCH_SIZE = 50;
+	let batch = [];
+	const date = new Date().toISOString();
+
+	for (const id of ids) {
+		batch.push(`${userId},${newOwnerId},${type},${id},${date}`);
+
+		if (batch.length >= BATCH_SIZE) {
+			try {
+				await appendToDataset(batch.join('\n') + '\n');
+			} catch (error) {
+				console.error('Logging failed:', error);
+			}
+			batch = [];
+		}
+	}
+
+	if (batch.length > 0) {
+		try {
+			await appendToDataset(batch.join('\n') + '\n');
+		} catch (error) {
+			console.error('Logging failed:', error);
+		}
+	}
+}
+
 //---------------------------TRANSFER-----------------------//
 
 async function transferContent(userId, newOwnerId) {
@@ -243,7 +167,7 @@ async function transferContent(userId, newOwnerId) {
 
 	await transferWorkflows(userId, newOwnerId);
 
-	await transferTasks(userId, newOwnerId);
+	await transferTaskCenterTasks(userId, newOwnerId);
 
 	await transferDataflows(userId, newOwnerId);
 
@@ -285,6 +209,8 @@ async function transferContent(userId, newOwnerId) {
 	await transferAiModels(userId, newOwnerId);
 
 	await transferAiProjects(userId, newOwnerId);
+
+	await transferProjectsAndTasks(userId, newOwnerId);
 }
 
 //-------------------------DataSets--------------------------//
@@ -523,9 +449,9 @@ async function transferWorkflows(userId, newOwnerId) {
 	await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflows);
 }
 
-//--------------------------Tasks--------------------------//
+//--------------------------Task Center Tasks--------------------------//
 
-async function transferTasks(userId, newOwnerId) {
+async function transferTaskCenterTasks(userId, newOwnerId) {
 	let tasks = [];
 	let offset = 0;
 	const limit = 100;
@@ -568,7 +494,7 @@ async function transferTasks(userId, newOwnerId) {
 		await handleRequest('PUT', url, body);
 	}
 
-	await logTransfers(userId, newOwnerId, 'PROJECT_TASK', taskIdList);
+	await logTransfers(userId, newOwnerId, 'HOPPER_TASK', taskIdList);
 }
 
 //----------------------------DataFlows-----------------------//
@@ -1568,65 +1494,73 @@ async function transferAiProjects(userId, newOwnerId) {
 	await logTransfers(userId, newOwnerId, 'PROJECT', projects);
 }
 
-async function appendToDataset(csvValues) {
-	const uploadUrl = `api/data/v3/datasources/2df07ed5-03ca-44be-b47b-fe936c431337/uploads`;
-	try {
-		// Start upload session
-		const { uploadId } = await codeengine.sendRequest('POST', uploadUrl, {
-			action: 'APPEND',
-			message: 'Uploading',
-			appendId: 'latest'
-		});
+//--------------------------ProjectsAndTasks--------------------------//
 
-		// Upload data part
-		const partsUrl = uploadUrl + `/${uploadId}/parts/1`;
-		//const partsUrl = UPLOADS_PARTS_URL.replace(':id', dataset).replace(':uploadId', uploadId);
-		await codeengine.sendRequest('put', partsUrl, csvValues, null, 'text/csv');
+async function transferProjectsAndTasks(userId, newOwnerId) {
+	let projects = [];
+	let tasks = [];
+	let offset = 0;
+	const limit = 100;
+	let moreData = true;
 
-		// Commit upload
-		const commitUrl = uploadUrl + `/${uploadId}/commit`;
-		//const commitUrl = UPLOADS_COMMIT_URL.replace(':id', dataset).replace(':uploadId', uploadId);
-
-		return await codeengine.sendRequest(
-			'PUT',
-			commitUrl,
-			{
-				index: true,
-				appendId: 'latest',
-				message: 'Append successful'
-			},
-			null,
-			'application/json'
+	while (moreData) {
+		const response = await handleRequest(
+			'GET',
+			`/api/content/v2/users/${userId}/projects?limit=${limit}&offset=${offset}`
 		);
-	} catch (error) {
-		console.error('Append failed:', error);
-		return false; // Simple boolean return for success/failure
-	}
-}
 
-async function logTransfers(userId, newOwnerId, type, ids) {
-	const BATCH_SIZE = 50;
-	let batch = [];
-	const date = new Date().toISOString();
+		if (response && response.length > 0) {
+			// Extract ids and append to list
+			projects.push(...response.projects);
 
-	for (const id of ids) {
-		batch.push(`${userId},${newOwnerId},${type},${id},${date}`);
+			// Increment offset to get next page
+			offset += limit;
 
-		if (batch.length >= BATCH_SIZE) {
-			try {
-				await appendToDataset(batch.join('\n') + '\n');
-			} catch (error) {
-				console.error('Logging failed:', error);
+			// If less than pageSize returned, this is the last page
+			if (response.length < limit) {
+				moreData = false;
 			}
-			batch = [];
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
 		}
 	}
 
-	if (batch.length > 0) {
-		try {
-			await appendToDataset(batch.join('\n') + '\n');
-		} catch (error) {
-			console.error('Logging failed:', error);
+	let projectIds = [];
+	for (let i = 0; i < projects.length; i++) {
+		// Get tasks for each project
+		const taskResponse = await handleRequest(
+			'GET',
+			`/api/content/v1/projects/${projects[i].id}/tasks?assignedToOwnerId=${userId}`
+		);
+
+		if (taskResponse && taskResponse.length > 0) {
+			tasks.push(...taskResponse.map((task) => task.id));
+			taskResponse.forEach(async (task) => {
+				if (task.primaryTaskOwner == userId) {
+					task.primaryTaskOwner = newOwnerId;
+				}
+				task.contributors.push({
+					assignedTo: newOwnerId,
+					assignedBy: 1486980888 // MajorDomo Service Account
+				});
+				task.owners.push({
+					assignedTo: newOwnerId,
+					assignedBy: 1486980888 // MajorDomo Service Account
+				});
+				await handleRequest('PUT', `/api/content/v1/tasks/${task.id}`, task);
+			});
+		}
+
+		if (projects[i].assignedTo == userId) {
+			projectIds.push(projects[i].id);
+			const url = `/api/content/v1/project/${projects[i].id}`;
+			const body = { id: projects[i].id, assignedTo: newOwnerId };
+
+			await handleRequest('PUT', url, body);
 		}
 	}
+
+	await logTransfers(userId, newOwnerId, 'PROJECT_TASK', tasks);
+	await logTransfers(userId, newOwnerId, 'PROJECT', projectIds);
 }
