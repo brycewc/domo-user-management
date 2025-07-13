@@ -20,6 +20,8 @@ class Helpers {
 	}
 }
 
+const { handleRequest } = Helpers;
+
 /**
  * Fetch detailed information for a specific user by Domo user ID.
  *
