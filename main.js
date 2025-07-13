@@ -1026,7 +1026,12 @@ async function transferJupyterWorkspaces(userId, newOwnerId) {
 		const url = `/api/datascience/v1/workspaces/${jupyterWorkspaceIds[i]}/ownership`;
 		await handleRequest('PUT', url, { newOwnerId });
 	}
-	await logTransfers(userId, newOwnerId, 'WORKSPACES', jupyterWorkspaceIds);
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'DATA_SCIENCE_NOTEBOOK',
+		jupyterWorkspaceIds
+	);
 }
 
 //------------------------------Code Engine Packages--------------------------//
@@ -1376,7 +1381,7 @@ async function transferCustomApps(userId, newOwnerId) {
 				}
 			}
 			const appIds = response.map((app) => app.id);
-			await logTransfers(userId, newOwnerId, 'APP', appIds);
+			await logTransfers(userId, newOwnerId, 'APP', appIds); // Bricks are APP, Pro Code Apps are RYUU_APP
 
 			if (response.length < limit) {
 				moreData = false;
@@ -1439,7 +1444,7 @@ async function transferAiModels(userId, newOwnerId) {
 		const data = { userId: newOwnerId };
 		await handleRequest('POST', url, data);
 	}
-	await logTransfers(userId, newOwnerId, 'MODELS', models);
+	await logTransfers(userId, newOwnerId, 'AI_MODEL', models); // Not recorded in the activity log
 }
 
 //-----------------------------------AI Projects----------------------------------//
@@ -1491,7 +1496,7 @@ async function transferAiProjects(userId, newOwnerId) {
 		const data = { userId: newOwnerId };
 		await handleRequest('POST', url, data);
 	}
-	await logTransfers(userId, newOwnerId, 'PROJECT', projects);
+	await logTransfers(userId, newOwnerId, 'AI_PROJECT', projects); // Not recorded in the activity log
 }
 
 //--------------------------ProjectsAndTasks--------------------------//
