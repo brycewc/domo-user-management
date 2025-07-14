@@ -95,8 +95,11 @@ async function deleteUser(userId) {
 	await handleRequest('DELETE', url);
 }
 
-async function appendToDataset(csvValues) {
-	const uploadUrl = `api/data/v3/datasources/2df07ed5-03ca-44be-b47b-fe936c431337/uploads`;
+async function appendToDataset(
+	csvValues,
+	datasetId = '83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
+) {
+	const uploadUrl = `api/data/v3/datasources/${datasetId}/uploads`;
 	try {
 		// Start upload session
 		const { uploadId } = await codeengine.sendRequest('POST', uploadUrl, {
@@ -131,17 +134,29 @@ async function appendToDataset(csvValues) {
 	}
 }
 
-async function logTransfers(userId, newOwnerId, type, ids) {
+async function logTransfers(
+	userId,
+	newOwnerId,
+	type,
+	ids,
+	status = 'TRANSFERRED',
+	notes = null
+) {
 	const BATCH_SIZE = 50;
 	let batch = [];
 	const date = new Date().toISOString();
 
 	for (const id of ids) {
-		batch.push(`${userId},${newOwnerId},${type},${id},${date}`);
+		batch.push(
+			`${userId},${newOwnerId},${type},${id},${date},${status},${notes}`
+		);
 
 		if (batch.length >= BATCH_SIZE) {
 			try {
-				await appendToDataset(batch.join('\n') + '\n');
+				await appendToDataset(
+					batch.join('\n') + '\n',
+					'83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
+				);
 			} catch (error) {
 				console.error('Logging failed:', error);
 			}
@@ -151,7 +166,10 @@ async function logTransfers(userId, newOwnerId, type, ids) {
 
 	if (batch.length > 0) {
 		try {
-			await appendToDataset(batch.join('\n') + '\n');
+			await appendToDataset(
+				batch.join('\n') + '\n',
+				'83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
+			);
 		} catch (error) {
 			console.error('Logging failed:', error);
 		}
@@ -197,8 +215,7 @@ async function transferContent(userId, newOwnerId) {
 
 	await transferFilesets(userId, newOwnerId);
 
-	// Get Publications
-	const publications = await getPublications(userId);
+	await getPublications(userId, newOwnerId);
 
 	await transferSubscriptions(userId, newOwnerId);
 
@@ -379,13 +396,23 @@ async function transferAlerts(userId, newOwnerId) {
 		}
 	}
 
-	const body = {
-		alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }]
-	};
+	// const body = {
+	// 	alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }],
+	// 	sendEmail: false
+	// };
+
+	// for (let i = 0; i < alerts.length; i++) {
+	// 	const url = `/api/social/v4/alerts/${alerts[i]}/share`;
+	// 	await handleRequest('POST', url, body);
+	// }
 
 	for (let i = 0; i < alerts.length; i++) {
-		const endpoint = `/api/social/v4/alerts/${alerts[i]}/share`;
-		await handleRequest('POST', endpoint, body);
+		const body = {
+			id: alerts[i],
+			owner: newOwnerId
+		};
+		const url = `/api/social/v4/alerts/${alerts[i]}`;
+		await handleRequest('PATCH', url, body);
 	}
 
 	await logTransfers(userId, newOwnerId, 'ALERT', alerts);
@@ -739,28 +766,30 @@ async function transferGoals(userId, newOwnerId, periodId) {
 	const url = `api/social/v2/objectives/profile?filterKeyResults=false&includeSampleGoal=false&periodId=${periodId}&ownerId=${userId}`;
 
 	const goals = await handleRequest('GET', url);
-	for (let i = 0; i < goals.length; i++) {
-		const goalUrl = `/api/social/v1/objectives/${goals[i].id}`;
+	if (goals && goals.length > 0) {
+		for (let i = 0; i < goals.length; i++) {
+			const goalUrl = `/api/social/v1/objectives/${goals[i].id}`;
 
-		goals[i].ownerId = newOwnerId;
-		goals[i].owners = [
-			{
-				ownerId: newOwnerId,
-				ownerType: 'USER',
-				primary: false
-			}
-		];
+			goals[i].ownerId = newOwnerId;
+			goals[i].owners = [
+				{
+					ownerId: newOwnerId,
+					ownerType: 'USER',
+					primary: false
+				}
+			];
 
-		const body = goals[i];
+			const body = goals[i];
 
-		await handleRequest('PUT', goalUrl, body);
+			await handleRequest('PUT', goalUrl, body);
+		}
+		await logTransfers(
+			userId,
+			newOwnerId,
+			'GOAL',
+			goals.map((goal) => goal.id)
+		);
 	}
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'GOAL',
-		goals.map((goal) => goal.id)
-	);
 }
 
 //-----------------------------------------Groups----------------------------------------//
@@ -869,7 +898,6 @@ async function transferBeastModes(userId, newOwnerId) {
 
 	while (moreData) {
 		const data = {
-			name: '',
 			filters: [{ field: 'owner', idList: [userId] }],
 			sort: {
 				field: 'name',
@@ -889,12 +917,17 @@ async function transferBeastModes(userId, newOwnerId) {
 			// Extract ids and append to list
 			const beastModes = response.results.map((beastMode) => ({
 				id: beastMode.id,
-				owner: newOwnerId
+				owner: newOwnerId,
+				links: beastMode.links
 			}));
 			const body = {
 				update: beastModes
 			};
-			await handleRequest('PUT', '/api/query/v1/functions/bulk/template', body);
+			await handleRequest(
+				'POST',
+				'/api/query/v1/functions/bulk/template',
+				body
+			);
 
 			await logTransfers(
 				userId,
@@ -950,7 +983,7 @@ async function transferAccounts(userId, newOwnerId) {
 		) {
 			// Extract ids and append to list
 			const ids = response.searchResultsMap.account.map(
-				(account) => account.id
+				(account) => account.databaseId
 			);
 			accountIds.push(...ids);
 
@@ -1158,21 +1191,30 @@ async function transferFilesets(userId, newOwnerId) {
 // Limitation the new owner must be an owner of all the content
 // Just get a list of publications for the manager to review
 
-async function getPublications(userId) {
-	let publicationList = [];
+async function getPublications(userId, newOwnerId) {
+	let publications = [];
 	const url = '/api/publish/v2/publications';
 
 	const response = await handleRequest('GET', url);
-	for (let i = 0; i < response.length; i++) {
-		const publicationId = response[i].id;
-		const publicationUrl = `/api/publish/v2/publications/${publicationId}`;
-		const response2 = await handleRequest('GET', publicationUrl);
-		if (response2.content.userId == userId) {
-			publicationList.push(publicationId);
+	if (response && response.length > 0) {
+		for (let i = 0; i < response.length; i++) {
+			const publicationId = response[i].id;
+			const publicationUrl = `/api/publish/v2/publications/${publicationId}`;
+			const response2 = await handleRequest('GET', publicationUrl);
+			if (response2.content.userId == userId) {
+				publications.push(publicationId);
+			}
 		}
 	}
 
-	return publicationList;
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'PUBLICATION',
+		publications,
+		'NOT_TRANSFERRED',
+		'Publications cannot be transferred as the new owner must be an owner of all the content'
+	);
 }
 
 //-------------------------------------Domo Everywhere Subscriptions-----------------------------------------//
@@ -1226,7 +1268,7 @@ async function transferSubscriptions(userId, newOwnerId) {
 		userId,
 		newOwnerId,
 		'SUBSCRIPTION',
-		subscriptions.map((item) => item.subscription.publicationId)
+		subscriptions.map((item) => item.subscriptionId)
 	);
 }
 
@@ -1298,42 +1340,41 @@ async function transferRepositories(userId, newOwnerId) {
 async function transferApprovals(userId, newOwnerId) {
 	const url = '/api/synapse/approval/graphql';
 
-	const data = [
-		{
-			operationName: 'getStats',
-			query:
-				'query getStats($from: Int!, $to: Int!, $threshold: Int!) {\n  countTotalRequests {\n    current\n    __typename\n  }\n  countStaleRequests(from: $from, to: $to, threshold: $threshold) {\n    current\n    __typename\n  }\n}\n'
-		},
-		{
-			operationName: 'getFilteredRequests',
-			variables: {
-				query: {
-					active: true,
-					submitterId: null,
-					approverId: userId,
-					templateId: null,
-					title: null,
-					lastModifiedBefore: null
-				},
-				after: null,
-				reverseSort: false
+	const data = {
+		operationName: 'getFilteredRequests',
+		variables: {
+			query: {
+				active: true,
+				submitterId: null,
+				approverId: userId,
+				templateId: null,
+				title: null,
+				lastModifiedBefore: null
 			},
-			query:
-				'query getFilteredRequests($query: QueryRequest!, $after: ID, $reverseSort: Boolean) {\n  workflowSearch(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {\n    edges {\n      cursor\n      node {\n        approval {\n          id\n          title\n          templateTitle\n          status\n          modifiedTime\n          version\n          providerName\n          approvalChainIdx\n          pendingApprover: pendingApproverEx {\n            id\n            type\n            displayName\n            ... on User {\n              title\n              avatarKey\n              __typename\n            }\n            ... on Group {\n              isDeleted\n              __typename\n            }\n            __typename\n          }\n          submitter {\n            id\n            type\n            displayName\n            avatarKey\n            isCurrentUser\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n      __typename\n    }\n    __typename\n  }\n}\n'
-		}
-	];
+			after: null,
+			reverseSort: false
+		},
+		query:
+			'query getFilteredRequests($query: QueryRequest!, $after: ID, $reverseSort: Boolean) {\n  workflowSearch(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {\n    edges {\n      cursor\n      node {\n        approval {\n          id\n          title\n          templateTitle\n          status\n          modifiedTime\n          version\n          providerName\n          approvalChainIdx\n          pendingApprover: pendingApproverEx {\n            id\n            type\n            displayName\n            ... on User {\n              title\n              avatarKey\n              __typename\n            }\n            ... on Group {\n              isDeleted\n              __typename\n            }\n            __typename\n          }\n          submitter {\n            id\n            type\n            displayName\n            avatarKey\n            isCurrentUser\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    pageInfo {\n      hasNextPage\n      hasPreviousPage\n      startCursor\n      endCursor\n      __typename\n    }\n    __typename\n  }\n}\n'
+	};
 
 	const response = await handleRequest('POST', url, data);
-	const responseApprovals = response[1].data.workflowSearch.edges;
+	const responseApprovals = response.data.workflowSearch.edges;
 
-	console.log(response[1].data.workflowSearch.edges[0].node.approval);
+	const pendingApprovals = responseApprovals.filter(
+		(approval) => approval.node.approval.status === 'PENDING'
+	);
 
-	for (let i = 0; i < responseApprovals.length; i++) {
-		const approverId = responseApprovals[i].node.approval.pendingApprover.id;
-		const approvalId = responseApprovals[i].node.approval.id;
-		const version = responseApprovals[i].node.approval.version;
+	const sentBackApprovals = responseApprovals.filter(
+		(approval) => approval.node.approval.status === 'SENTBACK'
+	);
 
-		if (approverId == userId) {
+	for (let i = 0; i < pendingApprovals.length; i++) {
+		if (pendingApprovals[i].node.approval.status == 'PENDING') {
+			const approverId = pendingApprovals[i].node.approval.pendingApprover.id;
+			const approvalId = pendingApprovals[i].node.approval.id;
+			const version = pendingApprovals[i].node.approval.version;
+
 			const transferBody = [
 				{
 					operationName: 'replaceApprovers',
@@ -1359,7 +1400,16 @@ async function transferApprovals(userId, newOwnerId) {
 		userId,
 		newOwnerId,
 		'APPROVAL',
-		responseApprovals.map((id) => id.node.approval.id)
+		pendingApprovals.map((approval) => approval.node.approval.id)
+	);
+
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'APPROVAL',
+		sentBackApprovals.map((approval) => approval.node.approval.id),
+		'NOT_TRANSFERRED',
+		'Transferring of sent back approvals is not supported'
 	);
 }
 
@@ -1369,20 +1419,21 @@ async function transferCustomApps(userId, newOwnerId) {
 	const limit = 30;
 	let offset = 0;
 	let moreData = true;
+	let appIds = [];
 
 	while (moreData) {
-		const url = `/api/apps/v1/designs?checkAdminAuthority=true&${limit}&offset=${offset}`;
+		const url = `/api/apps/v1/designs?checkAdminAuthority=true&deleted=false&${limit}&offset=${offset}`;
 		const response = await handleRequest('GET', url);
 
 		if (response && response.length > 0) {
 			for (let i = 0; i < response.length; i++) {
 				if (response[i].owner == userId) {
+					appIds.push(response[i].id);
 					const transferUrl = `/api/apps/v1/designs/${response[i].id}/permissions/ADMIN`;
 					const body = [newOwnerId];
 					await handleRequest('POST', transferUrl, body);
 				}
 			}
-			const appIds = response.map((app) => app.id);
 			await logTransfers(userId, newOwnerId, 'APP', appIds); // Bricks are APP, Pro Code Apps are RYUU_APP
 
 			if (response.length < limit) {
