@@ -28,19 +28,17 @@ const { handleRequest } = Helpers;
  * @param {string} userId - The unique identifier of the user in Domo.
  * @returns {Promise<void>} Resolves after logging the user details.
  */
-async function getUserDetails(userId) {
+async function getUserManager(userId) {
 	const url = `/api/identity/v1/users/${userId}?parts=DETAILED`;
-	var user;
-	await handleRequest('GET', url).then((response) => {
-		user = response.users[0];
-		user.attributes.forEach((attribute) => {
-			const key = attribute.key;
-			const value = attribute.values[0]; // Assuming values array always has one element
-			user[key] = value;
-		});
-		delete user.attributes;
-		delete user.role;
+	const response = await handleRequest('GET', url);
+	var user = response.users[0];
+	user.attributes.forEach((attribute) => {
+		const key = attribute.key;
+		const value = attribute.values[0]; // Assuming values array always has one element
+		user[key] = value;
 	});
+	delete user.attributes;
+	delete user.role;
 	if (!user.reportsTo) {
 		const queryResponse = await handleRequest(
 			'POST',
@@ -48,7 +46,13 @@ async function getUserDetails(userId) {
 		); // Output: Domo Users (domo.domo) |PROD| - https://domo.domo.com/datasources/87276a1f-12ff-4008-904f-874966e618fa/details/data/table
 		user.reportsTo = queryResponse[0]['HRIS Manager Domo ID'];
 	}
-	return user;
+	return user.reportsTo;
+}
+
+async function getUserName(userId) {
+	const url = `/api/content/v3/users/${userId}`;
+	const user = await handleRequest('GET', url);
+	return user.displayName || null;
 }
 
 /**
@@ -68,7 +72,6 @@ async function deleteUserSessions(userId) {
 		// Delete all sessions concurrently and wait for completion
 		await Promise.all(sessionsToDelete.map((s) => deleteSession(s.id)));
 	}
-	return true;
 }
 
 /**
@@ -144,7 +147,7 @@ async function logTransfers(
 ) {
 	const BATCH_SIZE = 50;
 	let batch = [];
-	const date = new Date().toISOString();
+	const date = new Date().toISOString().slice(0, -5); // Format: YYYY-MM-DDTHH:mm:ss
 
 	for (const id of ids) {
 		batch.push(
@@ -179,68 +182,66 @@ async function logTransfers(
 //---------------------------TRANSFER-----------------------//
 
 async function transferContent(userId, newOwnerId) {
-	await transferDatasets(userId, newOwnerId);
+	await Promise.all([
+		transferDatasets(userId, newOwnerId),
 
-	await transferCards(userId, newOwnerId);
+		transferDataflows(userId, newOwnerId),
 
-	await transferAlerts(userId, newOwnerId);
+		transferCards(userId, newOwnerId),
 
-	await transferWorkflows(userId, newOwnerId);
+		transferAlerts(userId, newOwnerId),
 
-	await transferTaskCenterTasks(userId, newOwnerId);
+		transferWorkflows(userId, newOwnerId),
 
-	await transferDataflows(userId, newOwnerId);
+		transferTaskCenterTasks(userId, newOwnerId),
 
-	await transferAppStudioApps(userId, newOwnerId);
+		transferAppStudioApps(userId, newOwnerId),
 
-	await transferPages(userId, newOwnerId);
+		transferPages(userId, newOwnerId),
 
-	await transferScheduledReports(userId, newOwnerId);
+		transferScheduledReports(userId, newOwnerId),
 
-	// Transfer Goals
-	const currentPeriodId = await getCurrentPeriod();
-	await transferGoals(userId, newOwnerId, currentPeriodId);
+		transferGoals(userId, newOwnerId, getCurrentPeriod()),
 
-	await transferGroups(userId, newOwnerId);
+		transferGroups(userId, newOwnerId),
 
-	await transferAppDbCollections(userId, newOwnerId);
+		transferAppDbCollections(userId, newOwnerId),
 
-	await transferBeastModes(userId, newOwnerId);
+		transferBeastModes(userId, newOwnerId),
 
-	await transferAccounts(userId, newOwnerId);
+		transferAccounts(userId, newOwnerId),
 
-	await transferJupyterWorkspaces(userId, newOwnerId);
+		transferJupyterWorkspaces(userId, newOwnerId),
 
-	await transferCodeEnginePackages(userId, newOwnerId);
+		transferCodeEnginePackages(userId, newOwnerId),
 
-	await transferFilesets(userId, newOwnerId);
+		transferFilesets(userId, newOwnerId),
 
-	await getPublications(userId, newOwnerId);
+		getPublications(userId, newOwnerId),
 
-	await transferSubscriptions(userId, newOwnerId);
+		transferSubscriptions(userId, newOwnerId),
 
-	await transferRepositories(userId, newOwnerId);
+		transferRepositories(userId, newOwnerId),
 
-	await transferApprovals(userId, newOwnerId);
+		transferApprovals(userId, newOwnerId),
 
-	await transferCustomApps(userId, newOwnerId);
+		transferCustomApps(userId, newOwnerId),
 
-	await transferAiModels(userId, newOwnerId);
+		transferAiModels(userId, newOwnerId),
 
-	await transferAiProjects(userId, newOwnerId);
+		transferAiProjects(userId, newOwnerId),
 
-	await transferProjectsAndTasks(userId, newOwnerId);
+		transferProjectsAndTasks(userId, newOwnerId)
+	]);
 }
 
 //-------------------------DataSets--------------------------//
 
 async function transferDatasets(userId, newOwnerId) {
-	const datasets = [];
-
-	const url = '/api/data/ui/v3/datasources/search';
 	let offset = 0;
 	const count = 100;
 	let moreData = true;
+	const datasets = [];
 
 	while (moreData) {
 		const data = {
@@ -262,12 +263,16 @@ async function transferDatasets(userId, newOwnerId) {
 			}
 		};
 
-		const response = await handleRequest('POST', url, data);
+		const response = await handleRequest(
+			'POST',
+			'/api/data/ui/v3/datasources/search',
+			data
+		);
 
 		if (response.dataSources && response.dataSources.length > 0) {
 			// Extract ids and append to list
 			const ids = response.dataSources.map((dataset) => dataset.id);
-			datasets.push(...ids);
+			datasets.push(...response.dataSources);
 
 			// Increment offset to get next page
 			offset += count;
@@ -286,15 +291,110 @@ async function transferDatasets(userId, newOwnerId) {
 		responsibleUserId: newOwnerId
 	};
 
-	const batch = [];
-	const date = new Date().toISOString();
+	const userName = await getUserName(userId);
 
 	for (let i = 0; i < datasets.length; i++) {
-		const endpoint = `/api/data/v2/datasources/${datasets[i]}/responsibleUsers`;
+		const endpoint = `/api/data/v2/datasources/${datasets[i].id}/responsibleUsers`;
 		await handleRequest('PUT', endpoint, body);
+		let tags = datasets[i].tagList || [];
+		if (tags.length > 0) {
+			tags = datasets[i].tagsList.filter((tag) => !tag.startsWith('From'));
+		}
+		tags.push(`From ${userName}`);
+		const tagsUrl = `/api/data/ui/v3/datasources/${datasets[i].id}/tags`;
+		await handleRequest('POST', tagsUrl, tags);
 	}
 
-	await logTransfers(userId, newOwnerId, 'DATASET', datasets);
+	await logTransfers(
+		userId,
+		newOwnerId,
+		'DATASET',
+		datasets.map((ds) => ds.id)
+	);
+}
+
+//----------------------------DataFlows-----------------------//
+
+async function transferDataflows(userId, newOwnerId) {
+	const userName = await getUserName(userId);
+	const count = 100;
+	let offset = 0;
+	let moreData = true;
+
+	while (moreData) {
+		const data = {
+			entities: ['DATAFLOW'],
+			filters: [
+				{
+					field: 'owned_by_id',
+					filterType: 'term',
+					value: userId
+				}
+			],
+			query: '*',
+			count: count,
+			offset: offset
+		};
+
+		const response = await handleRequest('POST', '/api/search/v1/query', data);
+		//console.log(response.searchObjects);
+
+		const url = '/api/dataprocessing/v1/dataflows/bulk/patch';
+		if (response.searchObjects && response.searchObjects.length > 0) {
+			// Extract ids and append to list
+			const dataflows = response.searchObjects;
+			const ids = dataflows.map((dataflow) => dataflow.databaseId);
+			const tags = dataflows.tags || [];
+			if (tags.length > 0) {
+				const oldTags = tags.filter((tag) => tag.startsWith('From')) || [];
+
+				// Remove tags
+				if (oldTags.length > 0) {
+					const removetagsBody = {
+						dataFlowIds: ids,
+						tagNames: oldTags
+					};
+					await handleRequest(
+						'PUT',
+						'/api/dataprocessing/v1/dataflows/bulk/tag/delete',
+						removetagsBody
+					);
+				}
+			}
+
+			// Log transfers
+			await logTransfers(userId, newOwnerId, 'DATAFLOW', ids);
+
+			// Update owner
+			const body = {
+				dataFlowIds: ids,
+				responsibleUserId: newOwnerId
+			};
+			await handleRequest('PUT', url, body);
+
+			// Add new tags
+			const addTagsBody = {
+				dataFlowIds: ids,
+				tagNames: [`From ${userName}`]
+			};
+			await handleRequest(
+				'PUT',
+				'/api/dataprocessing/v1/dataflows/bulk/tag',
+				addTagsBody
+			);
+
+			// Increment offset to get next page
+			offset += count;
+
+			// If less than pageSize returned, this is the last page
+			if (response.searchObjects.length < count) {
+				moreData = false;
+			}
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
+		}
+	}
 }
 
 //----------------------Cards-------------------------//
@@ -329,7 +429,7 @@ async function transferCards(userId, newOwnerId) {
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
 			const ids = response.searchObjects.map((card) => card.databaseId);
-			const body = {
+			let body = {
 				cardIds: ids,
 				cardOwners: [
 					{
@@ -342,6 +442,15 @@ async function transferCards(userId, newOwnerId) {
 			};
 
 			await handleRequest('POST', '/api/content/v1/cards/owners/add', body);
+
+			body.cardOwners = [
+				{
+					id: userId,
+					type: 'USER'
+				}
+			];
+
+			await handleRequest('POST', '/api/content/v1/cards/owners/remove', body);
 
 			await logTransfers(userId, newOwnerId, 'CARD', ids);
 
@@ -524,59 +633,6 @@ async function transferTaskCenterTasks(userId, newOwnerId) {
 	}
 
 	await logTransfers(userId, newOwnerId, 'HOPPER_TASK', taskIdList);
-}
-
-//----------------------------DataFlows-----------------------//
-
-async function transferDataflows(userId, newOwnerId) {
-	const count = 100;
-	let offset = 0;
-	let moreData = true;
-	let dataflows = [];
-
-	while (moreData) {
-		const data = {
-			entities: ['DATAFLOW'],
-			filters: [
-				{
-					field: 'owned_by_id',
-					filterType: 'term',
-					value: userId
-				}
-			],
-			query: '*',
-			count: count,
-			offset: offset
-		};
-
-		const response = await handleRequest('POST', '/api/search/v1/query', data);
-		//console.log(response.searchObjects);
-
-		if (response.searchObjects && response.searchObjects.length > 0) {
-			// Extract ids and append to list
-			const ids = response.searchObjects.map((dataflow) => dataflow.databaseId);
-			dataflows.push(...ids);
-
-			// Increment offset to get next page
-			offset += count;
-
-			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
-				moreData = false;
-			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
-		}
-	}
-	const body = { responsibleUserId: newOwnerId };
-
-	for (let i = 0; i < dataflows.length; i++) {
-		const url = `/api/dataprocessing/v1/dataflows/${dataflows[i]}/patch`;
-
-		await handleRequest('PUT', url, body);
-	}
-	await logTransfers(userId, newOwnerId, 'DATAFLOW', dataflows);
 }
 
 //------------------------------------App Studio--------------------------//
@@ -805,21 +861,20 @@ async function transferGroups(userId, newOwnerId) {
 
 		if (response && response.length > 0) {
 			// Extract ids and append to list
+			const groupIds = response
+				.filter((group) => group.owners.some((owner) => owner.id === userId))
+				.map((group) => group.id);
+			if (groupIds.length > 0) {
+				const body = groupIds.map((group) => ({
+					groupId: group,
+					addOwners: [{ type: 'USER', id: newOwnerId }],
+					removeOwners: [{ type: 'USER', id: userId }]
+				}));
 
-			const body = response.map((group) => ({
-				groupId: group.id,
-				addOwners: [{ type: 'USER', id: newOwnerId }],
-				removeOwners: [{ type: 'USER', id: userId }]
-			}));
+				await handleRequest('PUT', '/api/content/v2/groups/access', body);
 
-			await handleRequest('PUT', '/api/content/v2/groups/access', body);
-
-			await logTransfers(
-				userId,
-				newOwnerId,
-				'GROUP',
-				response.map((group) => group.id)
-			);
+				await logTransfers(userId, newOwnerId, 'GROUP', groupIds);
+			}
 
 			// Increment offset to get next page
 			offset += limit;
