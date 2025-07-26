@@ -7,12 +7,30 @@ class Helpers {
 	 * @param {text} method - The HTTP method
 	 * @param {text} url - The endpoint URL
 	 * @param {Object} [body=null] - The request body
+	 * @param {Object} [headers=null] - The request headers
+	 * @param {text} [content='application/json'] - Request body content type
 	 * @returns {Object} The response data
 	 * @throws {Error} If the request fails
 	 */
-	static async handleRequest(method, url, body = null) {
+	static async handleRequest(
+		method,
+		url,
+		body = null,
+		headers = null,
+		contentType = 'application/json'
+	) {
 		try {
-			return await codeengine.sendRequest(method, url, body);
+			if (method.toUpperCase() === 'GET') {
+				return await codeengine.sendRequest(method, url);
+			} else {
+				return await codeengine.sendRequest(
+					method,
+					url,
+					body,
+					headers,
+					contentType
+				);
+			}
 		} catch (error) {
 			console.error(`Error with ${method} request to ${url}:`, error);
 			throw error;
@@ -53,6 +71,13 @@ async function getUserName(userId) {
 	const url = `/api/content/v3/users/${userId}`;
 	const user = await handleRequest('GET', url);
 	return user.displayName || null;
+}
+
+async function updateManager(userId, managerId) {
+	console.log(userId, managerId);
+	const url = `/api/content/v2/users/${userId}/teams`;
+	const payload = { reportsTo: [{ userId: managerId }] };
+	await handleRequest('POST', url, payload);
 }
 
 /**
@@ -103,38 +128,29 @@ async function appendToDataset(
 	datasetId = '83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
 ) {
 	const uploadUrl = `api/data/v3/datasources/${datasetId}/uploads`;
-	try {
-		// Start upload session
-		const { uploadId } = await codeengine.sendRequest('POST', uploadUrl, {
-			action: 'APPEND',
-			message: 'Uploading',
-			appendId: 'latest'
-		});
+	const uploadBody = {
+		action: 'APPEND',
+		message: 'Uploading',
+		appendId: 'latest'
+	};
+	// Start upload session
+	const { uploadId } = await handleRequest('POST', uploadUrl, uploadBody);
 
-		// Upload data part
-		const partsUrl = uploadUrl + `/${uploadId}/parts/1`;
-		//const partsUrl = UPLOADS_PARTS_URL.replace(':id', dataset).replace(':uploadId', uploadId);
-		await codeengine.sendRequest('put', partsUrl, csvValues, null, 'text/csv');
+	// Upload data part
+	const partsUrl = uploadUrl + `/${uploadId}/parts/1`;
+	//const partsUrl = UPLOADS_PARTS_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+	await handleRequest('PUT', partsUrl, csvValues, null, 'text/csv');
 
-		// Commit upload
-		const commitUrl = uploadUrl + `/${uploadId}/commit`;
-		//const commitUrl = UPLOADS_COMMIT_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+	// Commit upload
+	const commitUrl = uploadUrl + `/${uploadId}/commit`;
+	//const commitUrl = UPLOADS_COMMIT_URL.replace(':id', dataset).replace(':uploadId', uploadId);
+	const commitBody = {
+		index: true,
+		appendId: 'latest',
+		message: 'Append successful'
+	};
 
-		return await codeengine.sendRequest(
-			'PUT',
-			commitUrl,
-			{
-				index: true,
-				appendId: 'latest',
-				message: 'Append successful'
-			},
-			null,
-			'application/json'
-		);
-	} catch (error) {
-		console.error('Append failed:', error);
-		return false; // Simple boolean return for success/failure
-	}
+	return await handleRequest('PUT', commitUrl, commitBody);
 }
 
 async function logTransfers(
@@ -656,7 +672,7 @@ async function transferAppStudioApps(userId, newOwnerId) {
 				.filter((item) => item.owners.some((owner) => owner.id == userId))
 				.map((item) => item.dataAppId.toString());
 			if (apps.length > 0) {
-				const body = {
+				const addBody = {
 					note: '',
 					entityIds: apps,
 					owners: [{ type: 'USER', id: parseInt(newOwnerId) }],
@@ -666,7 +682,18 @@ async function transferAppStudioApps(userId, newOwnerId) {
 				await handleRequest(
 					'PUT',
 					'/api/content/v1/dataapps/bulk/owners',
-					body
+					addBody
+				);
+
+				const removeBody = {
+					entityIds: apps,
+					owners: [{ type: 'USER', id: userId }]
+				};
+
+				await handleRequest(
+					'PUT',
+					'/api/content/v1/dataapps/bulk/owners/remove',
+					removeBody
 				);
 
 				await logTransfers(userId, newOwnerId, 'DATA_APP', apps);
@@ -725,6 +752,22 @@ async function transferPages(userId, newOwnerId) {
 				};
 
 				await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
+
+				const removeBody = {
+					owners: [
+						{
+							id: parseInt(userId),
+							type: 'USER'
+						}
+					],
+					pageIds: pages
+				};
+
+				await handleRequest(
+					'POST',
+					'/api/content/v1/pages/bulk/owners/remove',
+					removeBody
+				);
 			}
 			await logTransfers(userId, newOwnerId, 'PAGE', pages);
 			// Increment offset to get next page
@@ -1056,9 +1099,11 @@ async function transferAccounts(userId, newOwnerId) {
 	}
 	for (let i = 0; i < accountIds.length; i++) {
 		const transferUrl = `/api/data/v2/accounts/share/${accountIds[i]}`;
-		const body = { type: 'USER', id: newOwnerId, accessLevel: 'OWNER' };
+		const addBody = { type: 'USER', id: newOwnerId, accessLevel: 'OWNER' };
+		await handleRequest('PUT', transferUrl, addBody);
 
-		await handleRequest('PUT', transferUrl, body);
+		const removeBody = { type: 'USER', id: userId, accessLevel: 'NONE' };
+		await handleRequest('PUT', transferUrl, removeBody);
 	}
 
 	await logTransfers(userId, newOwnerId, 'ACCOUNT', accountIds);
@@ -1279,6 +1324,7 @@ async function transferSubscriptions(userId, newOwnerId) {
 	let offset = 0;
 	let moreData = true;
 	let subscriptions = [];
+	let subscriptionIds = [];
 
 	while (moreData) {
 		const url = 'api/publish/v2/subscriptions/summaries';
@@ -1305,6 +1351,7 @@ async function transferSubscriptions(userId, newOwnerId) {
 
 		const subscription = await handleRequest('GET', subscriptionUrl);
 		if (subscription.userId == userId) {
+			subscriptionIds.push(subscription.subscription.id);
 			const url = `/api/publish/v2/subscriptions/${subscription.subscription.id}`;
 
 			const body = {
@@ -1319,12 +1366,7 @@ async function transferSubscriptions(userId, newOwnerId) {
 			await handleRequest('PUT', url, body);
 		}
 	}
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'SUBSCRIPTION',
-		subscriptions.map((item) => item.subscriptionId)
-	);
+	await logTransfers(userId, newOwnerId, 'SUBSCRIPTION', subscriptionIds);
 }
 
 //--------------------------------------------------Sandbox Repositories---------------------------------//
@@ -1655,11 +1697,11 @@ async function transferProjectsAndTasks(userId, newOwnerId) {
 				}
 				task.contributors.push({
 					assignedTo: newOwnerId,
-					assignedBy: 1486980888 // MajorDomo Service Account
+					assignedBy: userId
 				});
 				task.owners.push({
 					assignedTo: newOwnerId,
-					assignedBy: 1486980888 // MajorDomo Service Account
+					assignedBy: userId
 				});
 				await handleRequest('PUT', `/api/content/v1/tasks/${task.id}`, task);
 			});
@@ -1667,8 +1709,8 @@ async function transferProjectsAndTasks(userId, newOwnerId) {
 
 		if (projects[i].assignedTo == userId) {
 			projectIds.push(projects[i].id);
-			const url = `/api/content/v1/project/${projects[i].id}`;
-			const body = { id: projects[i].id, assignedTo: newOwnerId };
+			const url = `/api/content/v1/projects/${projects[i].id}`;
+			const body = { id: projects[i].id, creator: newOwnerId };
 
 			await handleRequest('PUT', url, body);
 		}
