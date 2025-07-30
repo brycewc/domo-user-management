@@ -40,12 +40,6 @@ class Helpers {
 
 const { handleRequest } = Helpers;
 
-/**
- * Fetch detailed information for a specific user by Domo user ID.
- *
- * @param {string} userId - The unique identifier of the user in Domo.
- * @returns {Promise<void>} Resolves after logging the user details.
- */
 async function getUserManager(userId) {
 	const url = `/api/identity/v1/users/${userId}?parts=DETAILED`;
 	const response = await handleRequest('GET', url);
@@ -71,13 +65,6 @@ async function getUserName(userId) {
 	const url = `/api/content/v3/users/${userId}`;
 	const user = await handleRequest('GET', url);
 	return user.displayName || null;
-}
-
-async function updateManager(userId, managerId) {
-	console.log(userId, managerId);
-	const url = `/api/content/v2/users/${userId}/teams`;
-	const payload = { reportsTo: [{ userId: managerId }] };
-	await handleRequest('POST', url, payload);
 }
 
 /**
