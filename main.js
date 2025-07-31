@@ -73,13 +73,6 @@ async function getUserName(userId) {
 	return user.displayName || null;
 }
 
-async function updateManager(userId, managerId) {
-	console.log(userId, managerId);
-	const url = `/api/content/v2/users/${userId}/teams`;
-	const payload = { reportsTo: [{ userId: managerId }] };
-	await handleRequest('POST', url, payload);
-}
-
 /**
  * Retrieve all active sessions and delete those belonging to the specified user.
  *
@@ -198,6 +191,7 @@ async function logTransfers(
 //---------------------------TRANSFER-----------------------//
 
 async function transferContent(userId, newOwnerId) {
+	let currentPeriodId = await getCurrentPeriod();
 	await Promise.all([
 		transferDatasets(userId, newOwnerId),
 
@@ -217,7 +211,7 @@ async function transferContent(userId, newOwnerId) {
 
 		transferScheduledReports(userId, newOwnerId),
 
-		transferGoals(userId, newOwnerId, getCurrentPeriod()),
+		transferGoals(userId, newOwnerId, currentPeriodId),
 
 		transferGroups(userId, newOwnerId),
 
@@ -254,79 +248,49 @@ async function transferContent(userId, newOwnerId) {
 //-------------------------DataSets--------------------------//
 
 async function transferDatasets(userId, newOwnerId) {
-	let offset = 0;
-	const count = 100;
-	let moreData = true;
-	const datasets = [];
-
-	while (moreData) {
-		const data = {
-			entities: ['DATASET'],
-			filters: [
-				{
-					field: 'owned_by_id',
-					filterType: 'term',
-					value: userId
-				}
-			],
-			combineResults: true,
-			query: '*',
-			count: count,
-			offset: offset,
-			sort: {
-				isRelevance: false,
-				fieldSorts: [{ field: 'create_date', sortOrder: 'DESC' }]
-			}
-		};
-
-		const response = await handleRequest(
-			'POST',
-			'/api/data/ui/v3/datasources/search',
-			data
-		);
-
-		if (response.dataSources && response.dataSources.length > 0) {
-			// Extract ids and append to list
-			const ids = response.dataSources.map((dataset) => dataset.id);
-			datasets.push(...response.dataSources);
-
-			// Increment offset to get next page
-			offset += count;
-
-			// If less than pageSize returned, this is the last page
-			if (response.dataSources.length < count) {
-				moreData = false;
-			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
+	const data = [
+		{
+			id: userId.toString(),
+			type: 'USER'
 		}
-	}
+	];
 
-	const body = {
-		responsibleUserId: newOwnerId
-	};
-
-	const userName = await getUserName(userId);
-
-	for (let i = 0; i < datasets.length; i++) {
-		const endpoint = `/api/data/v2/datasources/${datasets[i].id}/responsibleUsers`;
-		await handleRequest('PUT', endpoint, body);
-		let tags = datasets[i].tagList || [];
-		if (tags.length > 0) {
-			tags = datasets[i].tagsList.filter((tag) => !tag.startsWith('From'));
-		}
-		tags.push(`From ${userName}`);
-		const tagsUrl = `/api/data/ui/v3/datasources/${datasets[i].id}/tags`;
-		await handleRequest('POST', tagsUrl, tags);
-	}
-
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'DATASET',
-		datasets.map((ds) => ds.id)
+	const response = await handleRequest(
+		'POST',
+		'/api/data/ui/v3/datasources/ownedBy',
+		data
 	);
+	if (response && response.length > 0) {
+		if (response[0].dataSourceIds && response[0].dataSourceIds.length > 0) {
+			const endpoint = '/api/data/ui/v3/datasources/ownedBy';
+			const body = [
+				{
+					entityIdentifier: { id: newOwnerId, type: 'USER' },
+					dataSourceIds: response[0].dataSourceIds
+				}
+			];
+			await handleRequest('PUT', endpoint, body);
+
+			// const userName = await getUserName(userId);
+
+			// for (let i = 0; i < datasets.length; i++) {
+			// 	let tags = datasets[i].tagList || [];
+			// 	if (tags.length > 0) {
+			// 		tags = datasets[i].tagsList.filter((tag) => !tag.startsWith('From'));
+			// 	}
+			// 	tags.push(`From ${userName}`);
+			// 	const tagsUrl = `/api/data/ui/v3/datasources/${datasets[i].id}/tags`;
+			// 	await handleRequest('POST', tagsUrl, tags);
+			// }
+
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'DATASET',
+				response[0].dataSourceIds
+			);
+		}
+	}
 }
 
 //----------------------------DataFlows-----------------------//
@@ -715,66 +679,55 @@ async function transferAppStudioApps(userId, newOwnerId) {
 //-----------------------------------Pages------------------------------//
 
 async function transferPages(userId, newOwnerId) {
-	const url = '/api/search/v1/query';
-	let offset = 0;
-	const count = 50;
+	let skip = 0;
+	const limit = 50;
 	let moreData = true;
 
 	while (moreData) {
+		const url = `/api/content/v1/pages/adminsummary?limit=${limit}&skip=${skip}`;
 		const data = {
-			count: count,
-			offset: offset,
-			combineResults: false,
-			query: '*',
-			filters: [
-				{
-					name: 'OWNED_BY_ID',
-					field: 'owned_by_id',
-					facetType: 'user',
-					value: `${userId}:USER`,
-					filterType: 'term'
-				}
-			],
-			entityList: [['page']]
+			addPageWithNoOwner: false,
+			includePageOwnerClause: 1,
+			ownerIds: [userId],
+			groupOwnerIds: [],
+			orderBy: 'pageTitle',
+			ascending: true
 		};
 
 		const response = await handleRequest('POST', url, data);
-		//console.log(response.searchObjects);
 
-		if (response.searchObjects && response.searchObjects.length > 0) {
+		if (response.pageAdminSummaries && response.pageAdminSummaries.length > 0) {
 			// Extract ids and append to list
-			const pages = response.searchObjects.map((page) => page.databaseId);
+			const pages = response.pageAdminSummaries.map((page) => page.pageId);
 
-			for (let i = 0; i < pages.length; i++) {
-				const body = {
-					owners: [{ id: newOwnerId, type: 'USER' }],
-					pageIds: pages
-				};
+			const body = {
+				owners: [{ id: newOwnerId, type: 'USER' }],
+				pageIds: pages
+			};
 
-				await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
+			await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
 
-				const removeBody = {
-					owners: [
-						{
-							id: parseInt(userId),
-							type: 'USER'
-						}
-					],
-					pageIds: pages
-				};
+			const removeBody = {
+				owners: [
+					{
+						id: parseInt(userId),
+						type: 'USER'
+					}
+				],
+				pageIds: pages
+			};
 
-				await handleRequest(
-					'POST',
-					'/api/content/v1/pages/bulk/owners/remove',
-					removeBody
-				);
-			}
+			await handleRequest(
+				'POST',
+				'/api/content/v1/pages/bulk/owners/remove',
+				removeBody
+			);
 			await logTransfers(userId, newOwnerId, 'PAGE', pages);
-			// Increment offset to get next page
-			offset += count;
+			// Increment skip to get next page
+			skip += limit;
 
 			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
+			if (response.pageAdminSummaries.length < limit) {
 				moreData = false;
 			}
 		} else {
@@ -971,7 +924,7 @@ async function transferAppDbCollections(userId, newOwnerId) {
 				userId,
 				newOwnerId,
 				'COLLECTION',
-				response.map((collection) => collection.id)
+				response.collections.map((collection) => collection.id)
 			);
 			// Increment offset to get next page
 			pageNumber++;
@@ -1519,7 +1472,7 @@ async function transferCustomApps(userId, newOwnerId) {
 	let appIds = [];
 
 	while (moreData) {
-		const url = `/api/apps/v1/designs?checkAdminAuthority=true&deleted=false&${limit}&offset=${offset}`;
+		const url = `/api/apps/v1/designs?checkAdminAuthority=true&deleted=false&limit=${limit}&offset=${offset}`;
 		const response = await handleRequest('GET', url);
 
 		if (response && response.length > 0) {
