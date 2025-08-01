@@ -210,7 +210,7 @@ async function transferContent(userId, newOwnerId) {
 
 		transferAppDbCollections(userId, newOwnerId),
 
-		transferBeastModes(userId, newOwnerId),
+		transferFunctions(userId, newOwnerId),
 
 		transferAccounts(userId, newOwnerId),
 
@@ -311,7 +311,7 @@ async function transferDatasets(userId, newOwnerId) {
 	await logTransfers(
 		userId,
 		newOwnerId,
-		'DATASET',
+		'DATA_SOURCE',
 		datasets.map((ds) => ds.id)
 	);
 }
@@ -366,7 +366,7 @@ async function transferDataflows(userId, newOwnerId) {
 			}
 
 			// Log transfers
-			await logTransfers(userId, newOwnerId, 'DATAFLOW', ids);
+			await logTransfers(userId, newOwnerId, 'DATAFLOW_TYPE', ids);
 
 			// Update owner
 			const body = {
@@ -827,7 +827,9 @@ async function transferScheduledReports(userId, newOwnerId) {
 	for (let i = 0; i < reports.length; i++) {
 		const endpoint = `/api/content/v1/reportschedules/${reports[i][0]}`;
 
-		await handleRequest('PUT', endpoint, { ownerId: newOwnerId });
+		let report = await handleRequest('GET', endpoint);
+		report.ownerId = newOwnerId;
+		await handleRequest('PUT', endpoint, report);
 	}
 	await logTransfers(
 		userId,
@@ -976,7 +978,7 @@ async function transferAppDbCollections(userId, newOwnerId) {
 
 //--------------------------Functions (Beast Modes and Variables)-------------------------//
 
-async function transferBeastModes(userId, newOwnerId) {
+async function transferFunctions(userId, newOwnerId) {
 	let moreData = true;
 	let offset = 0;
 	const limit = 100;
@@ -998,27 +1000,43 @@ async function transferBeastModes(userId, newOwnerId) {
 			data
 		);
 
+		const url = '/api/query/v1/functions/bulk/template';
 		if (response.results && response.results.length > 0) {
 			// Extract ids and append to list
-			const beastModes = response.results.map((beastMode) => ({
-				id: beastMode.id,
-				owner: newOwnerId,
-				links: beastMode.links
-			}));
-			const body = {
-				update: beastModes
-			};
-			await handleRequest(
-				'POST',
-				'/api/query/v1/functions/bulk/template',
-				body
-			);
+			const beastModes = response.results
+				.filter((func) => func.global === false)
+				.map((beastMode) => ({
+					id: beastMode.id,
+					owner: newOwnerId,
+					links: beastMode.links
+				}));
+
+			await handleRequest('POST', url, { update: beastModes });
 
 			await logTransfers(
 				userId,
 				newOwnerId,
 				'BEAST_MODE_FORMULA',
-				response.results.map((beastMode) => beastMode.id)
+				beastModes.map((func) => func.id)
+			);
+
+			const variables = response.results
+				.filter((func) => func.global === true)
+				.map((variable) => ({
+					id: variable.id,
+					owner: newOwnerId,
+					links: variable.links
+				}));
+
+			await handleRequest('POST', url, {
+				update: variables
+			});
+
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'VARIABLE',
+				variables.map((func) => func.id)
 			);
 
 			// Increment offset to get next page
