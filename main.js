@@ -277,12 +277,14 @@ async function transferDatasets(userId, newOwnerId) {
 			// 	await handleRequest('POST', tagsUrl, tags);
 			// }
 
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'DATA_SOURCE',
-		datasets.map((ds) => ds.id)
-	);
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'DATA_SOURCE',
+				datasets.map((ds) => ds.id)
+			);
+		}
+	}
 }
 
 //----------------------------DataFlows-----------------------//
