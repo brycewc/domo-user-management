@@ -649,7 +649,7 @@ async function transferAppStudioApps(userId, newOwnerId) {
 				};
 
 				await handleRequest(
-					'PUT',
+					'POST',
 					'/api/content/v1/dataapps/bulk/owners/remove',
 					removeBody
 				);
@@ -788,8 +788,15 @@ async function transferScheduledReports(userId, newOwnerId) {
 		const endpoint = `/api/content/v1/reportschedules/${reports[i][0]}`;
 
 		let report = await handleRequest('GET', endpoint);
+		let reportBody = {
+			id: report.id,
+			ownerId: newOwnerId,
+			schedule: report.schedule,
+			subject: report.subject,
+			viewId: report.viewId
+		};
 		report.ownerId = newOwnerId;
-		await handleRequest('PUT', endpoint, report);
+		await handleRequest('PUT', endpoint, reportBody);
 	}
 	await logTransfers(
 		userId,
@@ -1478,10 +1485,11 @@ async function transferApprovals(userId, newOwnerId) {
 //--------------------------------Custom Apps (Bricks and Pro Code Apps)-------------------------------------//
 
 async function transferCustomApps(userId, newOwnerId) {
-	const limit = 30;
+	const limit = 100;
 	let offset = 0;
 	let moreData = true;
-	let appIds = [];
+	let bricks = [];
+	let proCodeApps = [];
 
 	while (moreData) {
 		const url = `/api/apps/v1/designs?checkAdminAuthority=true&deleted=false&limit=${limit}&offset=${offset}`;
@@ -1490,13 +1498,18 @@ async function transferCustomApps(userId, newOwnerId) {
 		if (response && response.length > 0) {
 			for (let i = 0; i < response.length; i++) {
 				if (response[i].owner == userId) {
-					appIds.push(response[i].id);
+					let isClientCodeEnabled =
+						response[i].versions[0].flags['client-code-enabled'] || false;
+					if (isClientCodeEnabled) {
+						bricks.push(response[i].id);
+					} else {
+						proCodeApps.push(response[i].id);
+					}
 					const transferUrl = `/api/apps/v1/designs/${response[i].id}/permissions/ADMIN`;
 					const body = [newOwnerId];
 					await handleRequest('POST', transferUrl, body);
 				}
 			}
-			await logTransfers(userId, newOwnerId, 'APP', appIds); // Bricks are APP, Pro Code Apps are RYUU_APP
 
 			if (response.length < limit) {
 				moreData = false;
@@ -1507,6 +1520,12 @@ async function transferCustomApps(userId, newOwnerId) {
 			// No more data returned, stop loop
 			moreData = false;
 		}
+	}
+	if (bricks.length > 0) {
+		await logTransfers(userId, newOwnerId, 'APP', bricks);
+	}
+	if (proCodeApps.length > 0) {
+		await logTransfers(userId, newOwnerId, 'RYUU_APP', proCodeApps);
 	}
 }
 
