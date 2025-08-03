@@ -1387,14 +1387,17 @@ async function transferRepositories(userId, newOwnerId) {
 	}
 
 	for (let i = 0; i < repositoryIds.length; i++) {
-		const url = `/api/version/v1/repositories/${repositoryIds[i]}`;
+		const url = `/api/version/v1/repositories/${repositoryIds[i]}/permissions`;
 
 		const body = {
 			repositoryPermissionUpdates: [
 				{
 					userId: newOwnerId,
-					groupId: '',
 					permission: 'OWNER'
+				},
+				{
+					userId: userId,
+					permission: 'NONE'
 				}
 			]
 		};
@@ -1498,10 +1501,24 @@ async function transferCustomApps(userId, newOwnerId) {
 		if (response && response.length > 0) {
 			for (let i = 0; i < response.length; i++) {
 				if (response[i].owner == userId) {
-					let isClientCodeEnabled =
-						response[i].versions[0].flags['client-code-enabled'] || false;
-					if (isClientCodeEnabled) {
-						bricks.push(response[i].id);
+					if (
+						response[i].versions &&
+						response[i].versions.length > 0 &&
+						Object(response[i].versions[0]).hasOwnProperty('flags')
+					) {
+						if (
+							Object(response[i].versions[0].flags).hasOwnProperty(
+								'client-code-enabled'
+							)
+						) {
+							if (response[i].versions[0].flags['client-code-enabled']) {
+								bricks.push(response[i].id);
+							} else {
+								proCodeApps.push(response[i].id);
+							}
+						} else {
+							proCodeApps.push(response[i].id);
+						}
 					} else {
 						proCodeApps.push(response[i].id);
 					}
