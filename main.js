@@ -242,6 +242,8 @@ async function transferContent(userId, newOwnerId) {
 //-------------------------DataSets--------------------------//
 
 async function transferDatasets(userId, newOwnerId) {
+	const userName = await getUserName(userId);
+	const endpoint = '/api/data/ui/v3/datasources/ownedBy';
 	const data = [
 		{
 			id: userId.toString(),
@@ -249,14 +251,9 @@ async function transferDatasets(userId, newOwnerId) {
 		}
 	];
 
-	const response = await handleRequest(
-		'POST',
-		'/api/data/ui/v3/datasources/ownedBy',
-		data
-	);
+	const response = await handleRequest('POST', endpoint, data);
 	if (response && response.length > 0) {
 		if (response[0].dataSourceIds && response[0].dataSourceIds.length > 0) {
-			const endpoint = '/api/data/ui/v3/datasources/ownedBy';
 			const body = [
 				{
 					entityIdentifier: { id: newOwnerId, type: 'USER' },
@@ -264,24 +261,20 @@ async function transferDatasets(userId, newOwnerId) {
 				}
 			];
 			await handleRequest('PUT', endpoint, body);
-
-			// const userName = await getUserName(userId);
-
-			// for (let i = 0; i < datasets.length; i++) {
-			// 	let tags = datasets[i].tagList || [];
-			// 	if (tags.length > 0) {
-			// 		tags = datasets[i].tagsList.filter((tag) => !tag.startsWith('From'));
-			// 	}
-			// 	tags.push(`From ${userName}`);
-			// 	const tagsUrl = `/api/data/ui/v3/datasources/${datasets[i].id}/tags`;
-			// 	await handleRequest('POST', tagsUrl, tags);
-			// }
+			const tagsBody = {
+				bulkItems: {
+					ids: response[0].dataSourceIds,
+					type: 'DATA_SOURCE'
+				},
+				tags: [`From ${userName}`]
+			};
+			await handleRequest('/api/data/v1/ui/bulk/tag', tagsBody);
 
 			await logTransfers(
 				userId,
 				newOwnerId,
 				'DATA_SOURCE',
-				datasets.map((ds) => ds.id)
+				response[0].dataSourceIds
 			);
 		}
 	}
