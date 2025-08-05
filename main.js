@@ -268,7 +268,7 @@ async function transferDatasets(userId, newOwnerId) {
 				},
 				tags: [`From ${userName}`]
 			};
-			await handleRequest('/api/data/v1/ui/bulk/tag', tagsBody);
+			await handleRequest('POST', '/api/data/v1/ui/bulk/tag', tagsBody);
 
 			await logTransfers(
 				userId,
