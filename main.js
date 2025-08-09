@@ -544,7 +544,7 @@ async function transferWorkflows(userId, newOwnerId) {
 		}
 	}
 
-	const body = { owner: newOwnerId };
+	const body = { owner: newOwnerId.toString() };
 
 	for (let i = 0; i < workflows.length; i++) {
 		const url = `/api/workflow/v1/models/${workflows[i]}`;
