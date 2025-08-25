@@ -1,6 +1,9 @@
 /* eslint require-atomic-updates: 0 */
 const codeengine = require('codeengine');
 
+const logDatasetId = '83dec9f2-206b-445a-90ea-b6a368b3157d'; // Format: userId,newOwnerId,type,id,date,status,notes
+const domostatsScheduledReportsDatasetId =
+	'b7306441-b8a7-481c-baaf-4fffadb0ff61'; // https://www.domo.com/appstore/connector/domostats/datasets
 class Helpers {
 	/**
 	 * Helper function to handle API requests and errors
@@ -20,46 +23,28 @@ class Helpers {
 		contentType = 'application/json'
 	) {
 		try {
-			if (method.toUpperCase() === 'GET') {
-				return await codeengine.sendRequest(method, url);
-			} else {
-				return await codeengine.sendRequest(
-					method,
-					url,
-					body,
-					headers,
-					contentType
-				);
-			}
+			return await codeengine.sendRequest(
+				method,
+				url,
+				body,
+				headers,
+				contentType
+			);
 		} catch (error) {
-			console.error(`Error with ${method} request to ${url}:`, error);
+			console.error(
+				`Error with ${method} request to ${url}\nPayload:\n${JSON.stringify(
+					body,
+					null,
+					2
+				)}\nError:\n`,
+				error
+			);
 			throw error;
 		}
 	}
 }
 
 const { handleRequest } = Helpers;
-
-async function getUserManager(userId) {
-	const url = `/api/identity/v1/users/${userId}?parts=DETAILED`;
-	const response = await handleRequest('GET', url);
-	var user = response.users[0];
-	user.attributes.forEach((attribute) => {
-		const key = attribute.key;
-		const value = attribute.values[0]; // Assuming values array always has one element
-		user[key] = value;
-	});
-	delete user.attributes;
-	delete user.role;
-	if (!user.reportsTo) {
-		const queryResponse = await handleRequest(
-			'POST',
-			'api/query/v1/execute/87276a1f-12ff-4008-904f-874966e618fa'
-		); // Output: Domo Users (domo.domo) |PROD| - https://domo.domo.com/datasources/87276a1f-12ff-4008-904f-874966e618fa/details/data/table
-		user.reportsTo = queryResponse[0]['HRIS Manager Domo ID'];
-	}
-	return user.reportsTo;
-}
 
 async function getUserName(userId) {
 	const url = `/api/content/v3/users/${userId}`;
@@ -110,10 +95,7 @@ async function deleteUser(userId) {
 	await handleRequest('DELETE', url);
 }
 
-async function appendToDataset(
-	csvValues,
-	datasetId = '83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
-) {
+async function appendToDataset(csvValues, datasetId = logDatasetId) {
 	const uploadUrl = `api/data/v3/datasources/${datasetId}/uploads`;
 	const uploadBody = {
 		action: 'APPEND',
@@ -159,10 +141,7 @@ async function logTransfers(
 
 		if (batch.length >= BATCH_SIZE) {
 			try {
-				await appendToDataset(
-					batch.join('\n') + '\n',
-					'83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
-				);
+				await appendToDataset(batch.join('\n') + '\n', logDatasetId);
 			} catch (error) {
 				console.error('Logging failed:', error);
 			}
@@ -172,10 +151,7 @@ async function logTransfers(
 
 	if (batch.length > 0) {
 		try {
-			await appendToDataset(
-				batch.join('\n') + '\n',
-				'83dec9f2-206b-445a-90ea-b6a368b3157d' // https://domo.domo.com/datasources/83dec9f2-206b-445a-90ea-b6a368b3157d/details/data/table
-			);
+			await appendToDataset(batch.join('\n') + '\n', logDatasetId);
 		} catch (error) {
 			console.error('Logging failed:', error);
 		}
@@ -196,6 +172,8 @@ async function transferContent(userId, newOwnerId) {
 		transferAlerts(userId, newOwnerId),
 
 		transferWorkflows(userId, newOwnerId),
+
+		transferTaskCenterQueues(userId, newOwnerId),
 
 		transferTaskCenterTasks(userId, newOwnerId),
 
@@ -524,7 +502,6 @@ async function transferWorkflows(userId, newOwnerId) {
 		};
 
 		const response = await handleRequest('POST', '/api/search/v1/query', data);
-		//console.log(response.searchObjects);
 
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
@@ -552,6 +529,60 @@ async function transferWorkflows(userId, newOwnerId) {
 	}
 
 	await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflows);
+}
+
+//--------------------------Task Center Queues--------------------------//
+
+async function transferTaskCenterQueues(userId, newOwnerId) {
+	const count = 100;
+	let offset = 0;
+	let moreData = true;
+	let queues = [];
+
+	while (moreData) {
+		const data = {
+			query: '*',
+			entityList: [['queue']],
+			count: count,
+			offset: offset,
+			filters: [
+				{
+					facetType: 'user',
+					filterType: 'term',
+					field: 'owned_by_id',
+					value: `${userId}:USER`
+				}
+			]
+		};
+
+		const response = await handleRequest('POST', '/api/search/v1/query', data);
+
+		if (response.searchObjects && response.searchObjects.length > 0) {
+			// Extract ids and append to list
+			const ids = response.searchObjects.map((queue) => queue.uuid);
+			queues.push(...ids);
+
+			// Increment offset to get next page
+			offset += count;
+
+			// If less than pageSize returned, this is the last page
+			if (response.searchObjects.length < count) {
+				moreData = false;
+			}
+		} else {
+			// No more data returned, stop loop
+			moreData = false;
+		}
+	}
+
+	for (let i = 0; i < queues.length; i++) {
+		await handleRequest(
+			'PUT',
+			`/api/queues/v1/${queues[i]}/owner/${newOwnerId}`
+		);
+	}
+
+	await logTransfers(userId, newOwnerId, 'HOPPER_QUEUE', queues);
 }
 
 //--------------------------Task Center Tasks--------------------------//
@@ -727,8 +758,7 @@ async function transferPages(userId, newOwnerId) {
 //---------------------------------Scheduled Reports--------------------------------//
 
 async function transferScheduledReports(userId, newOwnerId) {
-	// Input: DomoStats Scheduled Reports (domo.domo) |RAW| - https://domo.domo.com/datasources/b7306441-b8a7-481c-baaf-4fffadb0ff61/details/overview?bucket=770
-	const url = 'api/query/v1/execute/b7306441-b8a7-481c-baaf-4fffadb0ff61';
+	const url = `api/query/v1/execute/${domostatsScheduledReportsDatasetId}`;
 	const body = {
 		querySource: 'data_table',
 		useCache: true,
@@ -937,7 +967,7 @@ async function transferAppDbCollections(userId, newOwnerId) {
 }
 
 //--------------------------Functions (Beast Modes and Variables)-------------------------//
-
+// Need to update to delete Beast Modes on deleted DataSets that have 0 dependencies
 async function transferFunctions(userId, newOwnerId) {
 	let moreData = true;
 	let offset = 0;
