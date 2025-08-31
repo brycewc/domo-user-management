@@ -239,14 +239,20 @@ async function transferDatasets(userId, newOwnerId) {
 				}
 			];
 			await handleRequest('PUT', endpoint, body);
-			const tagsBody = {
-				bulkItems: {
-					ids: response[0].dataSourceIds,
-					type: 'DATA_SOURCE'
-				},
-				tags: [`From ${userName}`]
-			};
-			await handleRequest('POST', '/api/data/v1/ui/bulk/tag', tagsBody);
+
+			// Tag datasets in batches of 50
+			const allIds = response[0].dataSourceIds;
+			for (let i = 0; i < allIds.length; i += 50) {
+				const chunk = allIds.slice(i, i + 50);
+				const tagsBody = {
+					bulkItems: {
+						ids: chunk,
+						type: 'DATA_SOURCE'
+					},
+					tags: [`From ${userName}`]
+				};
+				await handleRequest('POST', '/api/data/v1/ui/bulk/tag', tagsBody);
+			}
 
 			await logTransfers(
 				userId,
@@ -317,16 +323,19 @@ async function transferDataflows(userId, newOwnerId) {
 			};
 			await handleRequest('PUT', url, body);
 
-			// Add new tags
-			const addTagsBody = {
-				dataFlowIds: ids,
-				tagNames: [`From ${userName}`]
-			};
-			await handleRequest(
-				'PUT',
-				'/api/dataprocessing/v1/dataflows/bulk/tag',
-				addTagsBody
-			);
+			// Add new tags in batches of 50
+			for (let i = 0; i < ids.length; i += 50) {
+				const chunk = ids.slice(i, i + 50);
+				const addTagsBody = {
+					dataFlowIds: chunk,
+					tagNames: [`From ${userName}`]
+				};
+				await handleRequest(
+					'PUT',
+					'/api/dataprocessing/v1/dataflows/bulk/tag',
+					addTagsBody
+				);
+			}
 
 			// Increment offset to get next page
 			offset += count;
