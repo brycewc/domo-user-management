@@ -32,12 +32,11 @@ class Helpers {
 			);
 		} catch (error) {
 			console.error(
-				`Error with ${method} request to ${url}\nPayload:\n${JSON.stringify(
+				`Error with ${method} request to ${url}\nError:\n${error}\nPayload:\n${JSON.stringify(
 					body,
 					null,
 					2
-				)}\nError:\n`,
-				error
+				)}`
 			);
 			throw error;
 		}
@@ -977,10 +976,52 @@ async function transferAppDbCollections(userId, newOwnerId) {
 
 //--------------------------Functions (Beast Modes and Variables)-------------------------//
 // Need to update to delete Beast Modes on deleted DataSets that have 0 dependencies
+// Helper: verify referenced resources exist; if not, drop links before update
+async function resourceExists(type, id) {
+	try {
+		if (type === 'CARD') {
+			await handleRequest('GET', `/api/content/v1/cards/${id}/details`);
+			return true;
+		}
+		if (type === 'DATA_SOURCE' || type === 'DATASET') {
+			await handleRequest('GET', `/api/data/v3/datasources/${id}`);
+			return true;
+		}
+		// For other types, don't validate here
+		return true;
+	} catch (_err) {
+		return false;
+	}
+}
+
+async function sanitizeLinks(links) {
+	if (!Array.isArray(links) || links.length === 0) return [];
+	const cleaned = [];
+	for (const link of links) {
+		try {
+			const res = link && link.resource ? link.resource : null;
+			if (
+				res &&
+				res.id != null &&
+				(res.type === 'CARD' ||
+					res.type === 'DATA_SOURCE' ||
+					res.type === 'DATASET')
+			) {
+				const exists = await resourceExists(res.type, res.id);
+				if (!exists) continue; // skip invalid references
+			}
+			cleaned.push(link);
+		} catch (_e) {
+			// On unexpected shape, drop link
+		}
+	}
+	return cleaned;
+}
 async function transferFunctions(userId, newOwnerId) {
 	let moreData = true;
 	let offset = 0;
 	const limit = 100;
+	const chunkSize = 100; // Max objects per transfer request
 
 	while (moreData) {
 		const data = {
@@ -1002,15 +1043,20 @@ async function transferFunctions(userId, newOwnerId) {
 		const url = '/api/query/v1/functions/bulk/template';
 		if (response.results && response.results.length > 0) {
 			// Extract ids and append to list
-			const beastModes = response.results
-				.filter((func) => func.global === false)
-				.map((beastMode) => ({
-					id: beastMode.id,
-					owner: newOwnerId,
-					links: beastMode.links
-				}));
+			const beastModesRaw = response.results.filter(
+				(func) => func.global === false
+			);
+			const beastModes = [];
+			for (const beastMode of beastModesRaw) {
+				const links = await sanitizeLinks(beastMode.links);
+				beastModes.push({ id: beastMode.id, owner: newOwnerId, links });
+			}
 
-			await handleRequest('POST', url, { update: beastModes });
+			// Transfer beast modes in batches of 100
+			for (let i = 0; i < beastModes.length; i += chunkSize) {
+				const chunk = beastModes.slice(i, i + chunkSize);
+				await handleRequest('POST', url, { update: chunk });
+			}
 
 			await logTransfers(
 				userId,
@@ -1019,17 +1065,20 @@ async function transferFunctions(userId, newOwnerId) {
 				beastModes.map((func) => func.id)
 			);
 
-			const variables = response.results
-				.filter((func) => func.global === true)
-				.map((variable) => ({
-					id: variable.id,
-					owner: newOwnerId,
-					links: variable.links
-				}));
+			const variablesRaw = response.results.filter(
+				(func) => func.global === true
+			);
+			const variables = [];
+			for (const variable of variablesRaw) {
+				const links = await sanitizeLinks(variable.links);
+				variables.push({ id: variable.id, owner: newOwnerId, links });
+			}
 
-			await handleRequest('POST', url, {
-				update: variables
-			});
+			// Transfer variables in batches of 100
+			for (let i = 0; i < variables.length; i += chunkSize) {
+				const chunk = variables.slice(i, i + chunkSize);
+				await handleRequest('POST', url, { update: chunk });
+			}
 
 			await logTransfers(
 				userId,
