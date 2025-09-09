@@ -4,6 +4,9 @@ const codeengine = require('codeengine');
 const logDatasetId = '83dec9f2-206b-445a-90ea-b6a368b3157d'; // Format: userId,newOwnerId,type,id,date,status,notes
 const domostatsScheduledReportsDatasetId =
 	'b7306441-b8a7-481c-baaf-4fffadb0ff61'; // https://www.domo.com/appstore/connector/domostats/datasets
+const hrisDatasetId = '87276a1f-12ff-4008-904f-874966e618fa';
+const hrisManagerDomoIdColumnName = 'HRIS Manager Domo ID';
+
 class Helpers {
 	/**
 	 * Helper function to handle API requests and errors
@@ -49,6 +52,65 @@ async function getUserName(userId) {
 	const url = `/api/content/v3/users/${userId}`;
 	const user = await handleRequest('GET', url);
 	return user.displayName || null;
+}
+
+async function getHrisManager(userId) {
+	const query = {
+		querySource: 'data_table',
+		useCache: true,
+		query: {
+			columns: [
+				{
+					exprType: 'COLUMN',
+					column: 'User ID'
+				},
+				{
+					exprType: 'COLUMN',
+					column: hrisManagerDomoIdColumnName
+				}
+			],
+			limit: {
+				limit: 100,
+				offset: 0
+			},
+			orderByColumns: [],
+			groupByColumns: [],
+			where: {
+				not: false,
+				exprType: 'IN',
+				leftExpr: {
+					exprType: 'COLUMN',
+					column: 'User ID'
+				},
+				selectSet: [
+					{
+						exprType: 'STRING_VALUE',
+						value: userId
+					}
+				]
+			},
+			having: null
+		},
+		context: {
+			calendar: 'StandardCalendar',
+			features: {
+				PerformTimeZoneConversion: true,
+				AllowNullValues: true,
+				TreatNumbersAsStrings: true
+			}
+		},
+		viewTemplate: null,
+		tableAliases: null
+	};
+
+	const queryResponse = await handleRequest(
+		'POST',
+		`api/query/v1/execute/${hrisDatasetId}`,
+		query
+	);
+
+	const manager = parseInt(queryResponse.rows[0][1]);
+	return manager;
 }
 
 /**
