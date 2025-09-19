@@ -4,8 +4,6 @@ const codeengine = require('codeengine');
 const logDatasetId = '83dec9f2-206b-445a-90ea-b6a368b3157d'; // Format: userId,newOwnerId,type,id,date,status,notes
 const domostatsScheduledReportsDatasetId =
 	'b7306441-b8a7-481c-baaf-4fffadb0ff61'; // https://www.domo.com/appstore/connector/domostats/datasets
-const hrisDatasetId = '87276a1f-12ff-4008-904f-874966e618fa';
-const hrisManagerDomoIdColumnName = 'HRIS Manager Domo ID';
 
 class Helpers {
 	/**
@@ -52,65 +50,6 @@ async function getUserName(userId) {
 	const url = `/api/content/v3/users/${userId}`;
 	const user = await handleRequest('GET', url);
 	return user.displayName || null;
-}
-
-async function getHrisManager(userId) {
-	const query = {
-		querySource: 'data_table',
-		useCache: true,
-		query: {
-			columns: [
-				{
-					exprType: 'COLUMN',
-					column: 'User ID'
-				},
-				{
-					exprType: 'COLUMN',
-					column: hrisManagerDomoIdColumnName
-				}
-			],
-			limit: {
-				limit: 100,
-				offset: 0
-			},
-			orderByColumns: [],
-			groupByColumns: [],
-			where: {
-				not: false,
-				exprType: 'IN',
-				leftExpr: {
-					exprType: 'COLUMN',
-					column: 'User ID'
-				},
-				selectSet: [
-					{
-						exprType: 'STRING_VALUE',
-						value: userId
-					}
-				]
-			},
-			having: null
-		},
-		context: {
-			calendar: 'StandardCalendar',
-			features: {
-				PerformTimeZoneConversion: true,
-				AllowNullValues: true,
-				TreatNumbersAsStrings: true
-			}
-		},
-		viewTemplate: null,
-		tableAliases: null
-	};
-
-	const queryResponse = await handleRequest(
-		'POST',
-		`api/query/v1/execute/${hrisDatasetId}`,
-		query
-	);
-
-	const manager = parseInt(queryResponse.rows[0][1]);
-	return manager;
 }
 
 /**
@@ -544,16 +483,16 @@ async function transferAlerts(userId, newOwnerId) {
 
 //---------------------------Workflows--------------------------------//
 /**
- * Get Workflows owned by given user ID
+ * Get Workflows owned by given user ID and transfer ownership by updating the full workflow object
  *
  * @param {string} userId - The ID of the owner to search for.
- * @returns {Array<string>} List of workflow IDs owned by the user.
+ * @param {string} newOwnerId - The ID of the new owner.
  */
 async function transferWorkflows(userId, newOwnerId) {
 	const count = 100;
 	let offset = 0;
 	let moreData = true;
-	let workflows = [];
+	let workflowIds = [];
 
 	while (moreData) {
 		const data = {
@@ -576,7 +515,7 @@ async function transferWorkflows(userId, newOwnerId) {
 		if (response.searchObjects && response.searchObjects.length > 0) {
 			// Extract ids and append to list
 			const ids = response.searchObjects.map((workflow) => workflow.uuid);
-			workflows.push(...ids);
+			workflowIds.push(...ids);
 
 			// Increment offset to get next page
 			offset += count;
@@ -591,14 +530,28 @@ async function transferWorkflows(userId, newOwnerId) {
 		}
 	}
 
-	const body = { owner: newOwnerId.toString() };
+	// Process each workflow individually by fetching the full object and updating it
+	for (let i = 0; i < workflowIds.length; i++) {
+		const workflowId = workflowIds[i];
 
-	for (let i = 0; i < workflows.length; i++) {
-		const url = `/api/workflow/v1/models/${workflows[i]}`;
-		await handleRequest('PUT', url, body);
+		// Get the full workflow object
+		const workflow = await handleRequest(
+			'GET',
+			`/api/workflow/v1/models/${workflowId}`
+		);
+
+		// Update the owner property
+		workflow.owner = newOwnerId.toString();
+
+		// Save the workflow with the updated owner
+		await handleRequest(
+			'PUT',
+			`/api/workflow/v1/models/${workflowId}`,
+			workflow
+		);
 	}
 
-	await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflows);
+	await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflowIds);
 }
 
 //--------------------------Task Center Queues--------------------------//
