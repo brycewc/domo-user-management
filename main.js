@@ -601,7 +601,9 @@ async function transferTaskCenterQueues(userId, newOwnerId) {
 	for (let i = 0; i < queues.length; i++) {
 		await handleRequest(
 			'PUT',
-			`/api/queues/v1/${queues[i]}/owner/${newOwnerId}`
+			`/api/queues/v1/${queues[i]}/owner/${newOwnerId}`,
+			null,
+			{ 'Content-Type': 'application/json' }
 		);
 	}
 
