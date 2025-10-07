@@ -33,11 +33,9 @@ class Helpers {
 			);
 		} catch (error) {
 			console.error(
-				`Error with ${method} request to ${url}\nError:\n${error}\nPayload:\n${JSON.stringify(
-					body,
-					null,
-					2
-				)}`
+				`Error with ${method} request to ${url}\nError:\n${JSON.stringify(
+					error
+				)}\nPayload:\n${JSON.stringify(body, null, 2)}`
 			);
 			throw error;
 		}
@@ -232,18 +230,19 @@ async function transferDatasets(userId, newOwnerId) {
 	const response = await handleRequest('POST', endpoint, data);
 	if (response && response.length > 0) {
 		if (response[0].dataSourceIds && response[0].dataSourceIds.length > 0) {
-			const body = [
-				{
-					entityIdentifier: { id: newOwnerId, type: 'USER' },
-					dataSourceIds: response[0].dataSourceIds
-				}
-			];
-			await handleRequest('PUT', endpoint, body);
-
-			// Tag datasets in batches of 50
+			// Process datasets in batches of 50
 			const allIds = response[0].dataSourceIds;
 			for (let i = 0; i < allIds.length; i += 50) {
 				const chunk = allIds.slice(i, i + 50);
+				// Update owner
+				const body = [
+					{
+						entityIdentifier: { id: newOwnerId, type: 'USER' },
+						dataSourceIds: chunk
+					}
+				];
+				await handleRequest('PUT', endpoint, body);
+				// Add new tags
 				const tagsBody = {
 					bulkItems: {
 						ids: chunk,
