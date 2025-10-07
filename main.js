@@ -230,18 +230,20 @@ async function transferDatasets(userId, newOwnerId) {
 	const response = await handleRequest('POST', endpoint, data);
 	if (response && response.length > 0) {
 		if (response[0].dataSourceIds && response[0].dataSourceIds.length > 0) {
-			// Process datasets in batches of 50
+			// Process datasets in batches
+			const batchSize = 50;
 			const allIds = response[0].dataSourceIds;
-			for (let i = 0; i < allIds.length; i += 50) {
-				const chunk = allIds.slice(i, i + 50);
+			for (let i = 0; i < allIds.length; i += batchSize) {
+				const chunk = allIds.slice(i, i + batchSize);
 				// Update owner
 				const body = [
 					{
-						entityIdentifier: { id: newOwnerId, type: 'USER' },
-						dataSourceIds: chunk
+						type: 'DATA_SOURCE',
+						ids: chunk,
+						userId: newOwnerId
 					}
 				];
-				await handleRequest('PUT', endpoint, body);
+				await handleRequest('PUT', '/api/data/v1/ui/bulk/reassign', body);
 				// Add new tags
 				const tagsBody = {
 					bulkItems: {
@@ -253,12 +255,7 @@ async function transferDatasets(userId, newOwnerId) {
 				await handleRequest('POST', '/api/data/v1/ui/bulk/tag', tagsBody);
 			}
 
-			await logTransfers(
-				userId,
-				newOwnerId,
-				'DATA_SOURCE',
-				response[0].dataSourceIds
-			);
+			await logTransfers(userId, newOwnerId, 'DATA_SOURCE', allIds);
 		}
 	}
 }
