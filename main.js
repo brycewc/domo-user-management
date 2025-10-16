@@ -205,13 +205,17 @@ async function transferContent(userId, newOwnerId) {
 
 		transferApprovals(userId, newOwnerId),
 
+		transferApprovalTemplates(userId, newOwnerId),
+
 		transferCustomApps(userId, newOwnerId),
 
 		transferAiModels(userId, newOwnerId),
 
 		transferAiProjects(userId, newOwnerId),
 
-		transferProjectsAndTasks(userId, newOwnerId)
+		transferProjectsAndTasks(userId, newOwnerId),
+
+		transferMetrics(userId, newOwnerId)
 	]);
 }
 
@@ -400,7 +404,7 @@ async function transferCards(userId, newOwnerId) {
 				}
 			];
 
-			await handleRequest('POST', '/api/content/v1/cards/owners/remove', body);
+			// await handleRequest('POST', '/api/content/v1/cards/owners/remove', body); // Removing because their ownership will be removed when they are deleted
 
 			await logTransfers(userId, newOwnerId, 'CARD', ids);
 
@@ -1537,27 +1541,24 @@ async function transferApprovals(userId, newOwnerId) {
 
 	for (let i = 0; i < pendingApprovals.length; i++) {
 		if (pendingApprovals[i].node.approval.status == 'PENDING') {
-			const approverId = pendingApprovals[i].node.approval.pendingApprover.id;
 			const approvalId = pendingApprovals[i].node.approval.id;
 			const version = pendingApprovals[i].node.approval.version;
 
-			const transferBody = [
-				{
-					operationName: 'replaceApprovers',
-					variables: {
-						actedOnApprovals: [
-							{
-								id: approvalId,
-								version: version
-							}
-						],
-						newApproverId: newOwnerId,
-						newApproverType: 'PERSON'
-					},
-					query:
-						'mutation replaceApprovers($actedOnApprovals: [ActedOnApprovalInput!]!, $newApproverId: ID!, $newApproverType: ApproverType) {\n  bulkReplaceApprover(actedOnApprovals: $actedOnApprovals, newApproverId: $newApproverId, newApproverType: $newApproverType) {\n    id\n    __typename\n  }\n}\n'
-				}
-			];
+			const transferBody = {
+				operationName: 'replaceApprovers',
+				variables: {
+					actedOnApprovals: [
+						{
+							id: approvalId,
+							version: version
+						}
+					],
+					newApproverId: newOwnerId,
+					newApproverType: 'PERSON'
+				},
+				query:
+					'mutation replaceApprovers($actedOnApprovals: [ActedOnApprovalInput!]!, $newApproverId: ID!, $newApproverType: ApproverType) {\n  bulkReplaceApprover(actedOnApprovals: $actedOnApprovals, newApproverId: $newApproverId, newApproverType: $newApproverType) {\n    id\n    __typename\n  }\n}\n'
+			};
 
 			await handleRequest('POST', url, transferBody);
 		}
@@ -1577,6 +1578,249 @@ async function transferApprovals(userId, newOwnerId) {
 		'NOT_TRANSFERRED',
 		'Transferring of sent back approvals is not supported'
 	);
+}
+
+//-----------------------------------------Approval Templates--------------------------------------//
+
+async function transferApprovalTemplates(userId, newOwnerId) {
+	const url = '/api/synapse/approval/graphql';
+
+	const searchTemplatesBody = {
+		operationName: 'getFilteredRequests',
+		variables: {
+			first: 100,
+			after: null,
+			orderBy: 'TEMPLATE',
+			reverseSort: false,
+			query: {
+				type: 'AC',
+				searchTerm: '',
+				category: [],
+				ownerId: userId,
+				publishedOnly: false
+			}
+		},
+		query: `query getFilteredRequests($query: QueryRequest!, $after: ID, $reverseSort: Boolean) {
+		      workflowSearch(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {
+		        edges {
+		          cursor
+		          node {
+		            id
+		          }
+		        }
+		        pageInfo {
+		          hasNextPage
+		          hasPreviousPage
+		          startCursor
+		          endCursor
+		        }
+		      }
+		    }`
+	};
+
+	const searchTemplatesResponse = await handleRequest(
+		'POST',
+		url,
+		searchTemplatesBody
+	);
+	const approvalTemplateIds =
+		searchTemplatesResponse.data.workflowSearch.edges.map(
+			(edge) => edge.node.id
+		);
+
+	let getTemplateBody = {
+		operationName: 'getTemplateForEdit',
+		variables: {
+			id: null
+		},
+		query: `query getTemplateForEdit($id: ID!) {
+			 template(id: $id) {
+			   id
+			   title
+			   acknowledgment
+			   description
+			   providerName
+			   isPublic
+			   chainIsLocked
+			   observers {
+			     id
+			     type
+			     displayName
+			     avatarKey
+			     title
+			     ... on Group {
+			       userCount
+			     }
+			   }
+			   categories {
+			     id
+			   }
+			   fields {
+			     key
+			     type
+			     name
+			     data
+			     placeholder
+			     required
+			     isPrivate
+			     ... on SelectField {
+			       option
+			       multiselect
+			       datasource
+			       column
+			       order
+			     }
+			   }
+			   approvers {
+			     type
+			     originalType: type
+			     key
+			     ... on ApproverPerson {
+			       id: approverId
+			       approverId
+			       userDetails {
+			         id
+			         displayName
+			         title
+			         avatarKey
+			         isDeleted
+						 __typename
+			       }
+			     }
+			     ... on ApproverGroup {
+			       id: approverId
+			       approverId
+			       groupDetails {
+			         id
+			         displayName
+			         userCount
+			         isDeleted
+						 __typename
+			       }
+			     }
+			     ... on ApproverPlaceholder {
+			       placeholderText
+			     }
+					__typename
+			   }
+			 }
+		}`
+	};
+
+	// For each template—get full details, update owner, approvers, and observers—then save
+	for (let i = 0; i < approvalTemplateIds.length; i++) {
+		getTemplateBody.variables.id = approvalTemplateIds[i];
+		const getTemplateResponse = await handleRequest(
+			'POST',
+			url,
+			getTemplateBody
+		);
+		let template = getTemplateResponse.data.template;
+		template.ownerId = newOwnerId;
+
+		// Update approvers: if user is an approver, replace with new owner (only id, approverId, and type are required)
+		if (Array.isArray(template.approvers) && template.approvers.length > 0) {
+			template.approvers = template.approvers.map((approver) =>
+				approver.type === 'PERSON' &&
+				(approver.id == userId || approver.approverId == userId)
+					? { id: newOwnerId, approverId: newOwnerId, type: 'PERSON' }
+					: approver
+			);
+		}
+
+		// Remove duplicate approvers based on id, in case the new owner was already an approver
+		template.approvers = template.approvers.filter(
+			(value, index, self) =>
+				index === self.findIndex((approver) => approver.id === value.id)
+		);
+
+		// Update observers: if user is an observer, replace with new owner (only id and type are required)
+		if (Array.isArray(template.observers) && template.observers.length > 0) {
+			template.observers = template.observers.map((observer) =>
+				observer.type === 'PERSON' && observer.id == userId
+					? { id: newOwnerId, type: 'PERSON' }
+					: observer
+			);
+		}
+
+		// Remove duplicate observers based on id, in case the new owner was already an observer
+		template.observers = template.observers.filter(
+			(value, index, self) =>
+				index === self.findIndex((observer) => observer.id === value.id)
+		);
+
+		const transferTemplateBody = {
+			operationName: 'saveTemplate',
+			variables: {
+				template: template
+			},
+			query: `mutation saveTemplate($template: TemplateInput!) {
+					template: saveTemplate(template: $template) {
+						id
+						title
+						titleName
+						titlePlaceholder
+						acknowledgment
+						instructions
+						description
+						providerName
+						isPublic
+						chainIsLocked
+						owner {
+							id
+							displayName
+							avatarKey
+							__typename
+						}
+						fields {
+							key
+							type
+							name
+							placeholder
+							required
+							isLocked
+							__typename
+						}
+						approvers {
+						 type
+						 originalType: type
+						 key
+						 ... on ApproverPerson {
+							 approverId
+							 userDetails {
+								 id
+								 displayName
+								 title
+								 avatarKey
+								 __typename
+							 }
+							 __typename
+						 }
+						 ... on ApproverGroup {
+							 approverId
+							 groupDetails {
+								 id
+								 displayName
+								 userCount
+								 isDeleted
+								 __typename
+							 }
+							 __typename
+						 }
+						 ... on ApproverPlaceholder {
+							 placeholderText
+							 __typename
+						 }
+						 __typename
+						}
+						__typename
+					}
+				}`
+		};
+
+		await handleRequest('POST', url, transferTemplateBody);
+	}
+	await logTransfers(userId, newOwnerId, 'TEMPLATE', approvalTemplateIds);
 }
 
 //--------------------------------Custom Apps (Bricks and Pro Code Apps)-------------------------------------//
@@ -1813,4 +2057,48 @@ async function transferProjectsAndTasks(userId, newOwnerId) {
 
 	await logTransfers(userId, newOwnerId, 'PROJECT_TASK', tasks);
 	await logTransfers(userId, newOwnerId, 'PROJECT', projectIds);
+}
+
+async function transferMetrics(userId, newOwnerId) {
+	let metrics = [];
+	let moreData = true;
+	let offset = 0;
+	const limit = 100;
+
+	while (moreData) {
+		const data = {
+			nameContains: 'string',
+			filters: {
+				OWNER: [userId]
+			},
+			orderBy: 'CREATED',
+			followed: false,
+			descendingOrderBy: false,
+			limit: limit,
+			offset: offset
+		};
+
+		const response = await handleRequest(
+			'POST',
+			'/api/content/v1/metrics/filter',
+			data
+		);
+
+		if (response && response.metrics.length > 0) {
+			// Process metrics
+			for (const metric of response.metrics) {
+				await handleRequest(
+					'POST',
+					`/api/content/v1/metrics/${metric.id}/owner/${newOwnerId}`
+				);
+				metrics.push(metric.id);
+			}
+
+			offset += limit;
+		} else {
+			moreData = false;
+		}
+	}
+
+	await logTransfers(userId, newOwnerId, 'METRIC', metrics);
 }
