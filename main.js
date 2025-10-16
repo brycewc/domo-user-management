@@ -1586,7 +1586,7 @@ async function transferApprovalTemplates(userId, newOwnerId) {
 	const url = '/api/synapse/approval/graphql';
 
 	const searchTemplatesBody = {
-		operationName: 'getFilteredRequests',
+		operationName: 'getFilteredTemplates',
 		variables: {
 			first: 100,
 			after: null,
@@ -1600,8 +1600,8 @@ async function transferApprovalTemplates(userId, newOwnerId) {
 				publishedOnly: false
 			}
 		},
-		query: `query getFilteredRequests($query: QueryRequest!, $after: ID, $reverseSort: Boolean) {
-		      workflowSearch(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {
+		query: `query getFilteredTemplates($query: TemplateQueryRequest!, $after: ID, $reverseSort: Boolean) {
+		      templateConnection(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {
 		        edges {
 		          cursor
 		          node {
