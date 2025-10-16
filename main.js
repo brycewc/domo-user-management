@@ -1600,22 +1600,34 @@ async function transferApprovalTemplates(userId, newOwnerId) {
 				publishedOnly: false
 			}
 		},
-		query: `query getFilteredTemplates($query: TemplateQueryRequest!, $after: ID, $reverseSort: Boolean) {
-		      templateConnection(query: $query, type: "AC", after: $after, reverseSort: $reverseSort) {
-		        edges {
-		          cursor
-		          node {
-		            id
-		          }
-		        }
-		        pageInfo {
-		          hasNextPage
-		          hasPreviousPage
-		          startCursor
-		          endCursor
-		        }
+		query: `query getFilteredTemplates(
+		  $first: Int
+		  $after: ID
+		  $orderBy: OrderBy
+		  $reverseSort: Boolean
+		  $query: TemplateQueryRequest!
+		) {
+		  templateConnection(
+		    first: $first
+		    after: $after
+		    orderBy: $orderBy
+		    reverseSort: $reverseSort
+		    query: $query
+		  ) {
+		    edges {
+		      cursor
+		      node {
+		        id
 		      }
-		    }`
+		    }
+		    pageInfo {
+		      hasNextPage
+		      hasPreviousPage
+		      startCursor
+		      endCursor
+		    }
+		  }
+		}`
 	};
 
 	const searchTemplatesResponse = await handleRequest(
