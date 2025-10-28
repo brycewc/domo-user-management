@@ -240,13 +240,11 @@ async function transferDatasets(userId, newOwnerId) {
 			for (let i = 0; i < allIds.length; i += batchSize) {
 				const chunk = allIds.slice(i, i + batchSize);
 				// Update owner
-				const body = [
-					{
-						type: 'DATA_SOURCE',
-						ids: chunk,
-						userId: newOwnerId
-					}
-				];
+				const body = {
+					type: 'DATA_SOURCE',
+					ids: chunk,
+					userId: newOwnerId
+				};
 				await handleRequest('POST', '/api/data/v1/ui/bulk/reassign', body);
 				// Add new tags
 				const tagsBody = {
