@@ -247,7 +247,7 @@ async function transferDatasets(userId, newOwnerId) {
 						userId: newOwnerId
 					}
 				];
-				await handleRequest('PUT', '/api/data/v1/ui/bulk/reassign', body);
+				await handleRequest('POST', '/api/data/v1/ui/bulk/reassign', body);
 				// Add new tags
 				const tagsBody = {
 					bulkItems: {
