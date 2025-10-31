@@ -1010,8 +1010,10 @@ async function resourceExists(type, id) {
 }
 
 async function sanitizeLinks(links) {
-	if (!Array.isArray(links) || links.length === 0) return [];
-	const cleaned = [];
+	if (!Array.isArray(links) || links.length === 0)
+		return { valid: [], invalid: [] };
+	const valid = [];
+	const invalid = [];
 	for (const link of links) {
 		try {
 			const res = link && link.resource ? link.resource : null;
@@ -1023,14 +1025,18 @@ async function sanitizeLinks(links) {
 					res.type === 'DATASET')
 			) {
 				const exists = await resourceExists(res.type, res.id);
-				if (!exists) continue; // skip invalid references
+				if (!exists) {
+					invalid.push(link);
+					continue; // skip invalid references
+				}
 			}
-			cleaned.push(link);
+			valid.push(link);
 		} catch (_e) {
 			// On unexpected shape, drop link
+			invalid.push(link);
 		}
 	}
-	return cleaned;
+	return { valid, invalid };
 }
 async function transferFunctions(userId, newOwnerId) {
 	let moreData = true;
@@ -1055,52 +1061,159 @@ async function transferFunctions(userId, newOwnerId) {
 			data
 		);
 
-		const url = '/api/query/v1/functions/bulk/template';
+		const bulkUrl = '/api/query/v1/functions/bulk/template';
 		if (response.results && response.results.length > 0) {
-			// Extract ids and append to list
+			// Process beast modes
 			const beastModesRaw = response.results.filter(
 				(func) => func.global === false
 			);
 			const beastModes = [];
+			const deletedBeastModes = [];
+
 			for (const beastMode of beastModesRaw) {
-				const links = await sanitizeLinks(beastMode.links);
-				beastModes.push({ id: beastMode.id, owner: newOwnerId, links });
+				const originalLinks = beastMode.links;
+				const { valid: validLinks, invalid: invalidLinks } =
+					await sanitizeLinks(originalLinks);
+
+				// Check if any invalid links are visible
+				const hasInvalidVisibleLink = invalidLinks.some(
+					(link) => link.visible === true
+				);
+
+				// If function has only one link and it's invalid, OR has any invalid visible link, delete the function
+				if (
+					(originalLinks &&
+						originalLinks.length === 1 &&
+						invalidLinks.length === 1 &&
+						validLinks.length === 0) ||
+					hasInvalidVisibleLink
+				) {
+					const deleteUrl = `/api/query/v1/functions/template/${beastMode.id}`;
+					await handleRequest('DELETE', deleteUrl);
+					deletedBeastModes.push(beastMode.id);
+					continue; // Skip adding to transfer list
+				}
+
+				// Update links individually if there are invalid links to remove
+				if (invalidLinks.length > 0) {
+					const linkUrl = `/api/query/v1/functions/template/${beastMode.id}/links`;
+					const linkBody = {
+						linkTo: validLinks,
+						unlinkFrom: invalidLinks
+					};
+					await handleRequest('POST', linkUrl, linkBody);
+				}
+
+				beastModes.push({
+					id: beastMode.id,
+					owner: newOwnerId,
+					links: validLinks
+				});
 			}
 
 			// Transfer beast modes in batches of 100
 			for (let i = 0; i < beastModes.length; i += chunkSize) {
 				const chunk = beastModes.slice(i, i + chunkSize);
-				await handleRequest('POST', url, { update: chunk });
+				await handleRequest('POST', bulkUrl, { update: chunk });
 			}
 
-			await logTransfers(
-				userId,
-				newOwnerId,
-				'BEAST_MODE_FORMULA',
-				beastModes.map((func) => func.id)
-			);
+			// Log transferred beast modes
+			if (beastModes.length > 0) {
+				await logTransfers(
+					userId,
+					newOwnerId,
+					'BEAST_MODE_FORMULA',
+					beastModes.map((func) => func.id)
+				);
+			}
 
+			// Log deleted beast modes
+			if (deletedBeastModes.length > 0) {
+				await logTransfers(
+					userId,
+					newOwnerId,
+					'BEAST_MODE_FORMULA',
+					deletedBeastModes,
+					'DELETED',
+					'Beast Mode was linked to deleted or inaccessible resources'
+				);
+			}
+
+			// Process variables
 			const variablesRaw = response.results.filter(
 				(func) => func.global === true
 			);
 			const variables = [];
+			const deletedVariables = [];
+
 			for (const variable of variablesRaw) {
-				const links = await sanitizeLinks(variable.links);
-				variables.push({ id: variable.id, owner: newOwnerId, links });
+				const originalLinks = variable.links;
+				const { valid: validLinks, invalid: invalidLinks } =
+					await sanitizeLinks(originalLinks);
+
+				// Check if any invalid links are visible
+				const hasInvalidVisibleLink = invalidLinks.some(
+					(link) => link.visible === true
+				);
+
+				// If function has only one link and it's invalid, OR has any invalid visible link, delete the function
+				if (
+					(originalLinks &&
+						originalLinks.length === 1 &&
+						invalidLinks.length === 1 &&
+						validLinks.length === 0) ||
+					hasInvalidVisibleLink
+				) {
+					const deleteUrl = `/api/query/v1/functions/template/${variable.id}`;
+					await handleRequest('DELETE', deleteUrl);
+					deletedVariables.push(variable.id);
+					continue; // Skip adding to transfer list
+				}
+
+				// Update links individually if there are invalid links to remove
+				if (invalidLinks.length > 0) {
+					const linkUrl = `/api/query/v1/functions/template/${variable.id}/links`;
+					const linkBody = {
+						linkTo: validLinks,
+						unlinkFrom: invalidLinks
+					};
+					await handleRequest('POST', linkUrl, linkBody);
+				}
+
+				variables.push({
+					id: variable.id,
+					owner: newOwnerId,
+					links: validLinks
+				});
 			}
 
 			// Transfer variables in batches of 100
 			for (let i = 0; i < variables.length; i += chunkSize) {
 				const chunk = variables.slice(i, i + chunkSize);
-				await handleRequest('POST', url, { update: chunk });
+				await handleRequest('POST', bulkUrl, { update: chunk });
 			}
 
-			await logTransfers(
-				userId,
-				newOwnerId,
-				'VARIABLE',
-				variables.map((func) => func.id)
-			);
+			// Log transferred variables
+			if (variables.length > 0) {
+				await logTransfers(
+					userId,
+					newOwnerId,
+					'VARIABLE',
+					variables.map((func) => func.id)
+				);
+			}
+
+			// Log deleted variables
+			if (deletedVariables.length > 0) {
+				await logTransfers(
+					userId,
+					newOwnerId,
+					'VARIABLE',
+					deletedVariables,
+					'DELETED',
+					'Variable was linked to deleted or inaccessible resources'
+				);
+			}
 
 			// Increment offset to get next page
 			offset += limit;
