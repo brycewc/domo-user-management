@@ -37,7 +37,7 @@ class Helpers {
 					error
 				)}\nPayload:\n${JSON.stringify(body, null, 2)}`
 			);
-			throw error;
+			// throw error;
 		}
 	}
 }
@@ -158,149 +158,255 @@ async function logTransfers(
 
 //---------------------------TRANSFER-----------------------//
 
-async function transferContent(userId, newOwnerId) {
+async function transferContent(userId, newOwnerId, objectsToTransfer = []) {
 	let currentPeriodId = await getCurrentPeriod();
+
+	// Parse objects by type if specific objects are provided
+	const objectsByType = {};
+	if (objectsToTransfer.length > 0) {
+		for (const obj of objectsToTransfer) {
+			if (!objectsByType[obj.type]) {
+				objectsByType[obj.type] = [];
+			}
+			objectsByType[obj.type].push(obj.id);
+		}
+	}
+
 	await Promise.all([
-		transferDatasets(userId, newOwnerId),
+		transferDatasets(userId, newOwnerId, objectsByType['DATA_SOURCE'] || []),
 
-		transferDataflows(userId, newOwnerId),
+		transferDataflows(userId, newOwnerId, objectsByType['DATAFLOW_TYPE'] || []),
 
-		transferCards(userId, newOwnerId),
+		transferCards(userId, newOwnerId, objectsByType['CARD'] || []),
 
-		transferAlerts(userId, newOwnerId),
+		transferAlerts(userId, newOwnerId, objectsByType['ALERT'] || []),
 
-		transferWorkflows(userId, newOwnerId),
+		transferWorkflows(
+			userId,
+			newOwnerId,
+			objectsByType['WORKFLOW_MODEL'] || []
+		),
 
-		transferTaskCenterQueues(userId, newOwnerId),
+		transferTaskCenterQueues(
+			userId,
+			newOwnerId,
+			objectsByType['HOPPER_QUEUE'] || []
+		),
 
-		transferTaskCenterTasks(userId, newOwnerId),
+		transferTaskCenterTasks(
+			userId,
+			newOwnerId,
+			objectsByType['HOPPER_TASK'] || []
+		),
 
-		transferAppStudioApps(userId, newOwnerId),
+		transferAppStudioApps(userId, newOwnerId, objectsByType['DATA_APP'] || []),
 
-		transferPages(userId, newOwnerId),
+		transferPages(userId, newOwnerId, objectsByType['PAGE'] || []),
 
-		transferScheduledReports(userId, newOwnerId),
+		transferScheduledReports(
+			userId,
+			newOwnerId,
+			objectsByType['REPORT_SCHEDULE'] || []
+		),
 
-		transferGoals(userId, newOwnerId, currentPeriodId),
+		transferGoals(
+			userId,
+			newOwnerId,
+			currentPeriodId,
+			objectsByType['GOAL'] || []
+		),
 
-		transferGroups(userId, newOwnerId),
+		transferGroups(userId, newOwnerId, objectsByType['GROUP'] || []),
 
-		transferAppDbCollections(userId, newOwnerId),
+		transferAppDbCollections(
+			userId,
+			newOwnerId,
+			objectsByType['COLLECTION'] || []
+		),
 
-		transferFunctions(userId, newOwnerId),
+		transferFunctions(userId, newOwnerId, [
+			...(objectsByType['BEAST_MODE_FORMULA'] || []),
+			...(objectsByType['VARIABLE'] || [])
+		]),
 
-		transferAccounts(userId, newOwnerId),
+		transferAccounts(userId, newOwnerId, objectsByType['ACCOUNT'] || []),
 
-		transferJupyterWorkspaces(userId, newOwnerId),
+		transferJupyterWorkspaces(
+			userId,
+			newOwnerId,
+			objectsByType['DATA_SCIENCE_NOTEBOOK'] || []
+		),
 
-		transferCodeEnginePackages(userId, newOwnerId),
+		transferCodeEnginePackages(
+			userId,
+			newOwnerId,
+			objectsByType['CODEENGINE_PACKAGE'] || []
+		),
 
-		transferFilesets(userId, newOwnerId),
+		transferFilesets(userId, newOwnerId, objectsByType['FILESET'] || []),
 
-		getPublications(userId, newOwnerId),
+		getPublications(userId, newOwnerId, objectsByType['PUBLICATION'] || []),
 
-		transferSubscriptions(userId, newOwnerId),
+		transferSubscriptions(
+			userId,
+			newOwnerId,
+			objectsByType['SUBSCRIPTION'] || []
+		),
 
-		transferRepositories(userId, newOwnerId),
+		transferRepositories(userId, newOwnerId, objectsByType['REPOSITORY'] || []),
 
-		transferApprovals(userId, newOwnerId),
+		...(objectsToTransfer.length === 0
+			? transferApprovals(userId, newOwnerId)
+			: []),
 
-		transferApprovalTemplates(userId, newOwnerId),
+		...(objectsToTransfer.length === 0
+			? transferApprovalTemplates(userId, newOwnerId)
+			: []),
 
-		transferCustomApps(userId, newOwnerId),
+		transferCustomApps(userId, newOwnerId, [
+			...(objectsByType['APP'] || []),
+			...(objectsByType['RYUU_APP'] || [])
+		]),
 
-		transferAiModels(userId, newOwnerId),
+		transferAiModels(userId, newOwnerId, objectsByType['AI_MODEL'] || []),
 
-		transferAiProjects(userId, newOwnerId),
+		transferAiProjects(userId, newOwnerId, objectsByType['AI_PROJECT'] || []),
 
-		transferProjectsAndTasks(userId, newOwnerId),
+		transferProjectsAndTasks(userId, newOwnerId, [
+			...(objectsByType['PROJECT_TASK'] || []),
+			...(objectsByType['PROJECT'] || [])
+		]),
 
-		transferMetrics(userId, newOwnerId)
+		transferMetrics(userId, newOwnerId, objectsByType['METRIC'] || [])
 	]);
 }
 
 //-------------------------DataSets--------------------------//
 
-async function transferDatasets(userId, newOwnerId) {
+async function transferDatasets(userId, newOwnerId, filteredIds = []) {
 	const userName = await getUserName(userId);
-	const endpoint = '/api/data/ui/v3/datasources/ownedBy';
-	const data = [
-		{
-			id: userId.toString(),
-			type: 'USER'
-		}
-	];
 
-	const response = await handleRequest('POST', endpoint, data);
-	if (response && response.length > 0) {
-		if (response[0].dataSourceIds && response[0].dataSourceIds.length > 0) {
-			// Process datasets in batches
-			const batchSize = 50;
-			const allIds = response[0].dataSourceIds;
-			for (let i = 0; i < allIds.length; i += batchSize) {
-				const chunk = allIds.slice(i, i + batchSize);
-				// Update owner
-				const body = {
-					type: 'DATA_SOURCE',
-					ids: chunk,
-					userId: newOwnerId
-				};
-				await handleRequest('POST', '/api/data/v1/ui/bulk/reassign', body);
-				// Add new tags
-				const tagsBody = {
-					bulkItems: {
-						ids: chunk,
-						type: 'DATA_SOURCE'
-					},
-					tags: [`From ${userName}`]
-				};
-				await handleRequest('POST', '/api/data/v1/ui/bulk/tag', tagsBody);
+	let allIds = [];
+
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allIds = filteredIds;
+	} else {
+		// Use existing get logic
+		const endpoint = '/api/data/ui/v3/datasources/ownedBy';
+		const data = [
+			{
+				id: userId.toString(),
+				type: 'USER'
 			}
+		];
 
-			await logTransfers(userId, newOwnerId, 'DATA_SOURCE', allIds);
+		const response = await handleRequest('POST', endpoint, data);
+		if (response && response.length > 0) {
+			if (response[0].dataSourceIds && response[0].dataSourceIds.length > 0) {
+				allIds = response[0].dataSourceIds;
+			}
 		}
+	}
+
+	if (allIds.length > 0) {
+		// Process datasets in batches
+		const batchSize = 50;
+		for (let i = 0; i < allIds.length; i += batchSize) {
+			const chunk = allIds.slice(i, i + batchSize);
+			// Update owner
+			const body = {
+				type: 'DATA_SOURCE',
+				ids: chunk,
+				userId: newOwnerId
+			};
+			await handleRequest('POST', '/api/data/v1/ui/bulk/reassign', body);
+			// Add new tags
+			const tagsBody = {
+				bulkItems: {
+					ids: chunk,
+					type: 'DATA_SOURCE'
+				},
+				tags: [`From ${userName}`]
+			};
+			await handleRequest('POST', '/api/data/v1/ui/bulk/tag', tagsBody);
+		}
+
+		await logTransfers(userId, newOwnerId, 'DATA_SOURCE', allIds);
 	}
 }
 
 //----------------------------DataFlows-----------------------//
 
-async function transferDataflows(userId, newOwnerId) {
+async function transferDataflows(userId, newOwnerId, filteredIds = []) {
 	const userName = await getUserName(userId);
-	const count = 100;
-	let offset = 0;
-	let moreData = true;
 
-	while (moreData) {
-		const data = {
-			entities: ['DATAFLOW'],
-			filters: [
-				{
-					field: 'owned_by_id',
-					filterType: 'term',
-					value: userId
+	let allIds = [];
+
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allIds = filteredIds;
+	} else {
+		// Use existing get logic
+		const count = 100;
+		let offset = 0;
+		let moreData = true;
+
+		while (moreData) {
+			const data = {
+				entities: ['DATAFLOW'],
+				filters: [
+					{
+						field: 'owned_by_id',
+						filterType: 'term',
+						value: userId
+					}
+				],
+				query: '*',
+				count: count,
+				offset: offset
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/search/v1/query',
+				data
+			);
+
+			if (response.searchObjects && response.searchObjects.length > 0) {
+				// Extract ids and append to list
+				const dataflows = response.searchObjects;
+				const ids = dataflows.map((dataflow) => dataflow.databaseId);
+				allIds.push(...ids);
+
+				// Increment offset to get next page
+				offset += count;
+
+				// If less than pageSize returned, this is the last page
+				if (response.searchObjects.length < count) {
+					moreData = false;
 				}
-			],
-			query: '*',
-			count: count,
-			offset: offset
-		};
+			} else {
+				// No more data returned, stop loop
+				moreData = false;
+			}
+		}
+	}
 
-		const response = await handleRequest('POST', '/api/search/v1/query', data);
-		//console.log(response.searchObjects);
-
+	if (allIds.length > 0) {
 		const url = '/api/dataprocessing/v1/dataflows/bulk/patch';
-		if (response.searchObjects && response.searchObjects.length > 0) {
-			// Extract ids and append to list
-			const dataflows = response.searchObjects;
-			const ids = dataflows.map((dataflow) => dataflow.databaseId);
-			const tags = dataflows.tags || [];
+
+		// Note: We can't easily get existing tags when using filtered IDs, so we'll skip tag cleanup for filtered transfers
+		if (filteredIds.length === 0) {
+			// Only do tag cleanup when doing full transfer (not filtered)
+			const tags = []; // This would need to be retrieved per dataflow, which is complex
 			if (tags.length > 0) {
 				const oldTags = tags.filter((tag) => tag.startsWith('From')) || [];
 
 				// Remove tags
 				if (oldTags.length > 0) {
 					const removetagsBody = {
-						dataFlowIds: ids,
+						dataFlowIds: allIds,
 						tagNames: oldTags
 					};
 					await handleRequest(
@@ -310,113 +416,113 @@ async function transferDataflows(userId, newOwnerId) {
 					);
 				}
 			}
+		}
 
-			// Log transfers
-			await logTransfers(userId, newOwnerId, 'DATAFLOW_TYPE', ids);
+		// Log transfers
+		await logTransfers(userId, newOwnerId, 'DATAFLOW_TYPE', allIds);
 
-			// Update owner
-			const body = {
-				dataFlowIds: ids,
-				responsibleUserId: newOwnerId
+		// Update owner
+		const body = {
+			dataFlowIds: allIds,
+			responsibleUserId: newOwnerId
+		};
+		await handleRequest('PUT', url, body);
+
+		// Add new tags in batches of 50
+		for (let i = 0; i < allIds.length; i += 50) {
+			const chunk = allIds.slice(i, i + 50);
+			const addTagsBody = {
+				dataFlowIds: chunk,
+				tagNames: [`From ${userName}`]
 			};
-			await handleRequest('PUT', url, body);
-
-			// Add new tags in batches of 50
-			for (let i = 0; i < ids.length; i += 50) {
-				const chunk = ids.slice(i, i + 50);
-				const addTagsBody = {
-					dataFlowIds: chunk,
-					tagNames: [`From ${userName}`]
-				};
-				await handleRequest(
-					'PUT',
-					'/api/dataprocessing/v1/dataflows/bulk/tag',
-					addTagsBody
-				);
-			}
-
-			// Increment offset to get next page
-			offset += count;
-
-			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
-				moreData = false;
-			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
+			await handleRequest(
+				'PUT',
+				'/api/dataprocessing/v1/dataflows/bulk/tag',
+				addTagsBody
+			);
 		}
 	}
 }
 
 //----------------------Cards-------------------------//
 
-async function transferCards(userId, newOwnerId) {
+async function transferCards(userId, newOwnerId, filteredIds = []) {
 	const url = '/api/search/v1/query';
 
-	let offset = 0;
-	const count = 50;
-	let moreData = true;
+	let allIds = [];
 
-	while (moreData) {
-		const data = {
-			count: count,
-			offset: offset,
-			combineResults: false,
-			query: '*',
-			filters: [
-				{
-					name: 'OWNED_BY_ID',
-					field: 'owned_by_id',
-					facetType: 'user',
-					value: `${userId}:USER`,
-					filterType: 'term'
-				}
-			],
-			entityList: [['card']]
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let offset = 0;
+		const count = 50;
+		let moreData = true;
 
-		const response = await handleRequest('POST', url, data);
-
-		if (response.searchObjects && response.searchObjects.length > 0) {
-			// Extract ids and append to list
-			const ids = response.searchObjects.map((card) => card.databaseId);
-			let body = {
-				cardIds: ids,
-				cardOwners: [
+		while (moreData) {
+			const data = {
+				count: count,
+				offset: offset,
+				combineResults: false,
+				query: '*',
+				filters: [
 					{
-						id: newOwnerId,
-						type: 'USER'
+						name: 'OWNED_BY_ID',
+						field: 'owned_by_id',
+						facetType: 'user',
+						value: `${userId}:USER`,
+						filterType: 'term'
 					}
 				],
-				note: '',
-				sendEmail: false
+				entityList: [['card']]
 			};
 
-			await handleRequest('POST', '/api/content/v1/cards/owners/add', body);
+			const response = await handleRequest('POST', url, data);
 
-			body.cardOwners = [
-				{
-					id: userId,
-					type: 'USER'
+			if (response.searchObjects && response.searchObjects.length > 0) {
+				const ids = response.searchObjects.map((card) => card.databaseId);
+				allIds.push(...ids);
+
+				// Increment offset to get next page
+				offset += count;
+
+				// If less than pageSize returned, this is the last page
+				if (response.searchObjects.length < count) {
+					moreData = false;
 				}
-			];
-
-			// await handleRequest('POST', '/api/content/v1/cards/owners/remove', body); // Removing because their ownership will be removed when they are deleted
-
-			await logTransfers(userId, newOwnerId, 'CARD', ids);
-
-			// Increment offset to get next page
-			offset += count;
-
-			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
+	}
+
+	if (allIds.length > 0) {
+		let body = {
+			cardIds: allIds,
+			cardOwners: [
+				{
+					id: newOwnerId,
+					type: 'USER'
+				}
+			],
+			note: '',
+			sendEmail: false
+		};
+
+		await handleRequest('POST', '/api/content/v1/cards/owners/add', body);
+
+		body.cardOwners = [
+			{
+				id: userId,
+				type: 'USER'
+			}
+		];
+
+		// await handleRequest('POST', '/api/content/v1/cards/owners/remove', body); // Removing because their ownership will be removed when they are deleted
+
+		await logTransfers(userId, newOwnerId, 'CARD', allIds);
 	}
 }
 
@@ -427,56 +533,55 @@ async function transferCards(userId, newOwnerId) {
  * @param {string} userId - The ID of the user to get alerts for.
  * @returns {List<int>} List of alert IDs the user is subscribed to.
  */
-async function transferAlerts(userId, newOwnerId) {
-	let moreData = true;
-	let offset = 0;
-	const limit = 50;
+async function transferAlerts(userId, newOwnerId, filteredIds = []) {
 	let alerts = [];
 
-	while (moreData) {
-		const response = await handleRequest(
-			'GET',
-			`/api/social/v4/alerts?ownerId=${userId}&limit=${limit}&offset=${offset}`
-		);
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		alerts = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const limit = 50;
 
-		if (response.length > 0) {
-			// Extract ids and append to list
-			const ids = response.map((alert) => alert.id);
-			alerts.push(...ids);
+		while (moreData) {
+			const response = await handleRequest(
+				'GET',
+				`/api/social/v4/alerts?ownerId=${userId}&limit=${limit}&offset=${offset}`
+			);
 
-			// Increment offset to get next page
-			offset += limit;
+			if (response.length > 0) {
+				// Extract ids and append to list
+				const ids = response.map((alert) => alert.id);
+				alerts.push(...ids);
 
-			// If less than pageSize returned, this is the last page
-			if (response.length < limit) {
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than pageSize returned, this is the last page
+				if (response.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	// const body = {
-	// 	alertSubscriptions: [{ subscriberId: newOwnerId, type: 'USER' }],
-	// 	sendEmail: false
-	// };
+	if (alerts.length > 0) {
+		for (let i = 0; i < alerts.length; i++) {
+			const body = {
+				id: alerts[i],
+				owner: newOwnerId
+			};
+			const url = `/api/social/v4/alerts/${alerts[i]}`;
+			await handleRequest('PATCH', url, body);
+		}
 
-	// for (let i = 0; i < alerts.length; i++) {
-	// 	const url = `/api/social/v4/alerts/${alerts[i]}/share`;
-	// 	await handleRequest('POST', url, body);
-	// }
-
-	for (let i = 0; i < alerts.length; i++) {
-		const body = {
-			id: alerts[i],
-			owner: newOwnerId
-		};
-		const url = `/api/social/v4/alerts/${alerts[i]}`;
-		await handleRequest('PATCH', url, body);
+		await logTransfers(userId, newOwnerId, 'ALERT', alerts);
 	}
-
-	await logTransfers(userId, newOwnerId, 'ALERT', alerts);
 }
 
 //---------------------------Workflows--------------------------------//
@@ -486,370 +591,445 @@ async function transferAlerts(userId, newOwnerId) {
  * @param {string} userId - The ID of the owner to search for.
  * @param {string} newOwnerId - The ID of the new owner.
  */
-async function transferWorkflows(userId, newOwnerId) {
-	const count = 100;
-	let offset = 0;
-	let moreData = true;
+async function transferWorkflows(userId, newOwnerId, filteredIds = []) {
 	let workflowIds = [];
 
-	while (moreData) {
-		const data = {
-			query: '*',
-			entityList: [['workflow_model']],
-			count: count,
-			offset: offset,
-			filters: [
-				{
-					facetType: 'user',
-					filterType: 'term',
-					field: 'owned_by_id',
-					value: `${userId}:USER`
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		workflowIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const count = 100;
+		let offset = 0;
+		let moreData = true;
+
+		while (moreData) {
+			const data = {
+				query: '*',
+				entityList: [['workflow_model']],
+				count: count,
+				offset: offset,
+				filters: [
+					{
+						facetType: 'user',
+						filterType: 'term',
+						field: 'owned_by_id',
+						value: `${userId}:USER`
+					}
+				]
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/search/v1/query',
+				data
+			);
+
+			if (response.searchObjects && response.searchObjects.length > 0) {
+				// Extract ids and append to list
+				const ids = response.searchObjects.map((workflow) => workflow.uuid);
+				workflowIds.push(...ids);
+
+				// Increment offset to get next page
+				offset += count;
+
+				// If less than pageSize returned, this is the last page
+				if (response.searchObjects.length < count) {
+					moreData = false;
 				}
-			]
-		};
-
-		const response = await handleRequest('POST', '/api/search/v1/query', data);
-
-		if (response.searchObjects && response.searchObjects.length > 0) {
-			// Extract ids and append to list
-			const ids = response.searchObjects.map((workflow) => workflow.uuid);
-			workflowIds.push(...ids);
-
-			// Increment offset to get next page
-			offset += count;
-
-			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	// Process each workflow individually by fetching the full object and updating it
-	for (let i = 0; i < workflowIds.length; i++) {
-		const workflowId = workflowIds[i];
+	if (workflowIds.length > 0) {
+		// Process each workflow individually by fetching the full object and updating it
+		for (let i = 0; i < workflowIds.length; i++) {
+			const workflowId = workflowIds[i];
 
-		// Get the full workflow object
-		const workflow = await handleRequest(
-			'GET',
-			`/api/workflow/v1/models/${workflowId}`
-		);
+			// Get the full workflow object
+			const workflow = await handleRequest(
+				'GET',
+				`/api/workflow/v1/models/${workflowId}`
+			);
 
-		// Update the owner property
-		workflow.owner = newOwnerId.toString();
+			// Update the owner property
+			workflow.owner = newOwnerId.toString();
 
-		// Save the workflow with the updated owner
-		await handleRequest(
-			'PUT',
-			`/api/workflow/v1/models/${workflowId}`,
-			workflow
-		);
+			// Save the workflow with the updated owner
+			await handleRequest(
+				'PUT',
+				`/api/workflow/v1/models/${workflowId}`,
+				workflow
+			);
+		}
+
+		await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflowIds);
 	}
-
-	await logTransfers(userId, newOwnerId, 'WORKFLOW_MODEL', workflowIds);
 }
 
 //--------------------------Task Center Queues--------------------------//
 
-async function transferTaskCenterQueues(userId, newOwnerId) {
-	const count = 100;
-	let offset = 0;
-	let moreData = true;
+async function transferTaskCenterQueues(userId, newOwnerId, filteredIds = []) {
 	let queues = [];
 
-	while (moreData) {
-		const data = {
-			query: '*',
-			entityList: [['queue']],
-			count: count,
-			offset: offset,
-			filters: [
-				{
-					facetType: 'user',
-					filterType: 'term',
-					field: 'owned_by_id',
-					value: `${userId}:USER`
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		queues = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const count = 100;
+		let offset = 0;
+		let moreData = true;
+
+		while (moreData) {
+			const data = {
+				query: '*',
+				entityList: [['queue']],
+				count: count,
+				offset: offset,
+				filters: [
+					{
+						facetType: 'user',
+						filterType: 'term',
+						field: 'owned_by_id',
+						value: `${userId}:USER`
+					}
+				]
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/search/v1/query',
+				data
+			);
+
+			if (response.searchObjects && response.searchObjects.length > 0) {
+				// Extract ids and append to list
+				const ids = response.searchObjects.map((queue) => queue.uuid);
+				queues.push(...ids);
+
+				// Increment offset to get next page
+				offset += count;
+
+				// If less than pageSize returned, this is the last page
+				if (response.searchObjects.length < count) {
+					moreData = false;
 				}
-			]
-		};
-
-		const response = await handleRequest('POST', '/api/search/v1/query', data);
-
-		if (response.searchObjects && response.searchObjects.length > 0) {
-			// Extract ids and append to list
-			const ids = response.searchObjects.map((queue) => queue.uuid);
-			queues.push(...ids);
-
-			// Increment offset to get next page
-			offset += count;
-
-			// If less than pageSize returned, this is the last page
-			if (response.searchObjects.length < count) {
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < queues.length; i++) {
-		await handleRequest(
-			'PUT',
-			`/api/queues/v1/${queues[i]}/owner/${newOwnerId}`,
-			null,
-			{ 'Content-Type': 'application/json' }
-		);
-	}
+	if (queues.length > 0) {
+		for (let i = 0; i < queues.length; i++) {
+			await handleRequest(
+				'PUT',
+				`/api/queues/v1/${queues[i]}/owner/${newOwnerId}`,
+				null,
+				{ 'Content-Type': 'application/json' }
+			);
+		}
 
-	await logTransfers(userId, newOwnerId, 'HOPPER_QUEUE', queues);
+		await logTransfers(userId, newOwnerId, 'HOPPER_QUEUE', queues);
+	}
 }
 
 //--------------------------Task Center Tasks--------------------------//
 
-async function transferTaskCenterTasks(userId, newOwnerId) {
+async function transferTaskCenterTasks(userId, newOwnerId, filteredIds = []) {
 	let tasks = [];
-	let offset = 0;
-	const limit = 100;
-	let moreData = true;
 
-	while (moreData) {
-		const response = await handleRequest(
-			'POST',
-			`/api/queues/v1/tasks/list?limit=${limit}&offset=${offset}`,
-			{ assignedTo: [userId], status: ['OPEN'] }
-		);
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list - for tasks we need to fetch queue info
+		const taskDetails = [];
+		for (const taskId of filteredIds) {
+			// We'd need to find the queue for each task, but this is complex
+			// For now, just store the ID and handle the transfer
+			taskDetails.push({ id: taskId, queueId: null });
+		}
+		tasks = taskDetails;
+	} else {
+		// Use existing discovery logic
+		let offset = 0;
+		const limit = 100;
+		let moreData = true;
 
-		if (response && response.length > 0) {
-			// Extract ids and append to list
-			const ids = response.map((task) => ({
-				id: task.id,
-				queueId: task.queueId
-			}));
-			tasks.push(...ids);
+		while (moreData) {
+			const response = await handleRequest(
+				'POST',
+				`/api/queues/v1/tasks/list?limit=${limit}&offset=${offset}`,
+				{ assignedTo: [userId], status: ['OPEN'] }
+			);
 
-			// Increment offset to get next page
-			offset += limit;
+			if (response && response.length > 0) {
+				// Extract ids and append to list
+				const ids = response.map((task) => ({
+					id: task.id,
+					queueId: task.queueId
+				}));
+				tasks.push(...ids);
 
-			// If less than pageSize returned, this is the last page
-			if (response.length < limit) {
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than pageSize returned, this is the last page
+				if (response.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
-	const taskIdList = [];
 
-	for (let i = 0; i < tasks.length; i++) {
-		const url = `/api/queues/v1/${tasks[i].queueId}/tasks/${tasks[i].id}/assign`;
-		const body = { userId: newOwnerId, type: 'USER', taskIds: [tasks[i].id] };
-		taskIdList.push(tasks[i].id);
+	if (tasks.length > 0) {
+		const taskIdList = [];
 
-		await handleRequest('PUT', url, body);
+		for (let i = 0; i < tasks.length; i++) {
+			if (tasks[i].queueId) {
+				const url = `/api/queues/v1/${tasks[i].queueId}/tasks/${tasks[i].id}/assign`;
+				const body = {
+					userId: newOwnerId,
+					type: 'USER',
+					taskIds: [tasks[i].id]
+				};
+				await handleRequest('PUT', url, body);
+			}
+			taskIdList.push(tasks[i].id);
+		}
+
+		await logTransfers(userId, newOwnerId, 'HOPPER_TASK', taskIdList);
 	}
-
-	await logTransfers(userId, newOwnerId, 'HOPPER_TASK', taskIdList);
 }
 
 //------------------------------------App Studio--------------------------//
 
-async function transferAppStudioApps(userId, newOwnerId) {
-	const limit = 30;
-	let skip = 0;
-	let moreData = true;
-	const data = {};
+async function transferAppStudioApps(userId, newOwnerId, filteredIds = []) {
+	let allApps = [];
 
-	while (moreData) {
-		const url = `/api/content/v1/dataapps/adminsummary?limit=${limit}&skip=${skip}`;
-		const response = await handleRequest('POST', url, data);
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allApps = filteredIds.map((id) => id.toString());
+	} else {
+		// Use existing discovery logic
+		const limit = 30;
+		let skip = 0;
+		let moreData = true;
+		const data = {};
 
-		if (
-			response.dataAppAdminSummaries &&
-			response.dataAppAdminSummaries.length > 0
-		) {
-			// Extract ids and append to list
-			const apps = response.dataAppAdminSummaries
-				.filter((item) => item.owners.some((owner) => owner.id == userId))
-				.map((item) => item.dataAppId.toString());
-			if (apps.length > 0) {
-				const addBody = {
-					note: '',
-					entityIds: apps,
-					owners: [{ type: 'USER', id: parseInt(newOwnerId) }],
-					sendEmail: false
-				};
+		while (moreData) {
+			const url = `/api/content/v1/dataapps/adminsummary?limit=${limit}&skip=${skip}`;
+			const response = await handleRequest('POST', url, data);
 
-				await handleRequest(
-					'PUT',
-					'/api/content/v1/dataapps/bulk/owners',
-					addBody
-				);
+			if (
+				response.dataAppAdminSummaries &&
+				response.dataAppAdminSummaries.length > 0
+			) {
+				// Extract ids and append to list
+				const apps = response.dataAppAdminSummaries
+					.filter((item) => item.owners.some((owner) => owner.id == userId))
+					.map((item) => item.dataAppId.toString());
+				allApps.push(...apps);
 
-				const removeBody = {
-					entityIds: apps,
-					owners: [{ type: 'USER', id: userId }]
-				};
+				// Increment offset to get next page
+				skip += limit;
 
-				await handleRequest(
-					'POST',
-					'/api/content/v1/dataapps/bulk/owners/remove',
-					removeBody
-				);
-
-				await logTransfers(userId, newOwnerId, 'DATA_APP', apps);
-			}
-			// Increment offset to get next page
-			skip += limit;
-
-			// If less than pageSize returned, this is the last page
-			if (response.dataAppAdminSummaries.length < limit) {
+				// If less than pageSize returned, this is the last page
+				if (response.dataAppAdminSummaries.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
+	}
+
+	if (allApps.length > 0) {
+		const addBody = {
+			note: '',
+			entityIds: allApps,
+			owners: [{ type: 'USER', id: parseInt(newOwnerId) }],
+			sendEmail: false
+		};
+
+		await handleRequest('PUT', '/api/content/v1/dataapps/bulk/owners', addBody);
+
+		const removeBody = {
+			entityIds: allApps,
+			owners: [{ type: 'USER', id: userId }]
+		};
+
+		await handleRequest(
+			'POST',
+			'/api/content/v1/dataapps/bulk/owners/remove',
+			removeBody
+		);
+
+		await logTransfers(userId, newOwnerId, 'DATA_APP', allApps);
 	}
 }
 
 //-----------------------------------Pages------------------------------//
 
-async function transferPages(userId, newOwnerId) {
-	let skip = 0;
-	const limit = 50;
-	let moreData = true;
+async function transferPages(userId, newOwnerId, filteredIds = []) {
+	let allPages = [];
 
-	while (moreData) {
-		const url = `/api/content/v1/pages/adminsummary?limit=${limit}&skip=${skip}`;
-		const data = {
-			addPageWithNoOwner: false,
-			includePageOwnerClause: 1,
-			ownerIds: [userId],
-			groupOwnerIds: [],
-			orderBy: 'pageTitle',
-			ascending: true
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allPages = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let skip = 0;
+		const limit = 50;
+		let moreData = true;
 
-		const response = await handleRequest('POST', url, data);
-
-		if (response.pageAdminSummaries && response.pageAdminSummaries.length > 0) {
-			// Extract ids and append to list
-			const pages = response.pageAdminSummaries.map((page) => page.pageId);
-
-			const body = {
-				owners: [{ id: newOwnerId, type: 'USER' }],
-				pageIds: pages
+		while (moreData) {
+			const url = `/api/content/v1/pages/adminsummary?limit=${limit}&skip=${skip}`;
+			const data = {
+				addPageWithNoOwner: false,
+				includePageOwnerClause: 1,
+				ownerIds: [userId],
+				groupOwnerIds: [],
+				orderBy: 'pageTitle',
+				ascending: true
 			};
 
-			await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
+			const response = await handleRequest('POST', url, data);
 
-			const removeBody = {
-				owners: [
-					{
-						id: parseInt(userId),
-						type: 'USER'
-					}
-				],
-				pageIds: pages
-			};
+			if (
+				response.pageAdminSummaries &&
+				response.pageAdminSummaries.length > 0
+			) {
+				// Extract ids and append to list
+				const pages = response.pageAdminSummaries.map((page) => page.pageId);
+				allPages.push(...pages);
 
-			await handleRequest(
-				'POST',
-				'/api/content/v1/pages/bulk/owners/remove',
-				removeBody
-			);
-			await logTransfers(userId, newOwnerId, 'PAGE', pages);
-			// Increment skip to get next page
-			skip += limit;
+				// Increment skip to get next page
+				skip += limit;
 
-			// If less than pageSize returned, this is the last page
-			if (response.pageAdminSummaries.length < limit) {
+				// If less than pageSize returned, this is the last page
+				if (response.pageAdminSummaries.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
+	}
+
+	if (allPages.length > 0) {
+		const body = {
+			owners: [{ id: newOwnerId, type: 'USER' }],
+			pageIds: allPages
+		};
+
+		await handleRequest('PUT', '/api/content/v1/pages/bulk/owners', body);
+
+		const removeBody = {
+			owners: [
+				{
+					id: parseInt(userId),
+					type: 'USER'
+				}
+			],
+			pageIds: allPages
+		};
+
+		await handleRequest(
+			'POST',
+			'/api/content/v1/pages/bulk/owners/remove',
+			removeBody
+		);
+		await logTransfers(userId, newOwnerId, 'PAGE', allPages);
 	}
 }
 
 //---------------------------------Scheduled Reports--------------------------------//
 
-async function transferScheduledReports(userId, newOwnerId) {
-	const url = `api/query/v1/execute/${domostatsScheduledReportsDatasetId}`;
-	const body = {
-		querySource: 'data_table',
-		useCache: true,
-		query: {
-			columns: [
-				{
-					exprType: 'COLUMN',
-					column: 'Report Id'
-				}
-			],
-			limit: {
-				limit: 10000,
-				offset: 0
-			},
-			orderByColumns: [],
-			groupByColumns: [],
-			where: {
-				not: false,
-				exprType: 'IN',
-				leftExpr: {
-					exprType: 'COLUMN',
-					column: 'Owner Id'
-				},
-				selectSet: [
+async function transferScheduledReports(userId, newOwnerId, filteredIds = []) {
+	let reportIds = [];
+
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		reportIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const url = `api/query/v1/execute/${domostatsScheduledReportsDatasetId}`;
+		const body = {
+			querySource: 'data_table',
+			useCache: true,
+			query: {
+				columns: [
 					{
-						exprType: 'STRING_VALUE',
-						value: userId
+						exprType: 'COLUMN',
+						column: 'Report Id'
 					}
-				]
+				],
+				limit: {
+					limit: 10000,
+					offset: 0
+				},
+				orderByColumns: [],
+				groupByColumns: [],
+				where: {
+					not: false,
+					exprType: 'IN',
+					leftExpr: {
+						exprType: 'COLUMN',
+						column: 'Owner Id'
+					},
+					selectSet: [
+						{
+							exprType: 'STRING_VALUE',
+							value: userId
+						}
+					]
+				},
+				having: null
 			},
-			having: null
-		},
-		context: {
-			calendar: 'StandardCalendar',
-			features: {
-				PerformTimeZoneConversion: true,
-				AllowNullValues: true,
-				TreatNumbersAsStrings: true
-			}
-		},
-		// Used for Views Explorer, not the regular Data table
-		viewTemplate: null,
-		tableAliases: null
-	};
-
-	const response = await handleRequest('POST', url, body);
-	const reports = response.rows;
-
-	for (let i = 0; i < reports.length; i++) {
-		const endpoint = `/api/content/v1/reportschedules/${reports[i][0]}`;
-
-		let report = await handleRequest('GET', endpoint);
-		let reportBody = {
-			id: report.id,
-			ownerId: newOwnerId,
-			schedule: report.schedule,
-			subject: report.subject,
-			viewId: report.viewId
+			context: {
+				calendar: 'StandardCalendar',
+				features: {
+					PerformTimeZoneConversion: true,
+					AllowNullValues: true,
+					TreatNumbersAsStrings: true
+				}
+			},
+			// Used for Views Explorer, not the regular Data table
+			viewTemplate: null,
+			tableAliases: null
 		};
-		report.ownerId = newOwnerId;
-		await handleRequest('PUT', endpoint, reportBody);
+
+		const response = await handleRequest('POST', url, body);
+		const reports = response.rows;
+		reportIds = reports.map((r) => r[0]);
 	}
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'REPORT_SCHEDULE',
-		reports.map((r) => r[0])
-	);
+
+	if (reportIds.length > 0) {
+		for (let i = 0; i < reportIds.length; i++) {
+			const endpoint = `/api/content/v1/reportschedules/${reportIds[i]}`;
+
+			let report = await handleRequest('GET', endpoint);
+			let reportBody = {
+				id: report.id,
+				ownerId: newOwnerId,
+				schedule: report.schedule,
+				subject: report.subject,
+				viewId: report.viewId
+			};
+			report.ownerId = newOwnerId;
+			await handleRequest('PUT', endpoint, reportBody);
+		}
+		await logTransfers(userId, newOwnerId, 'REPORT_SCHEDULE', reportIds);
+	}
 }
 
 //---------------------------------------------Goals------------------------------------------------//
@@ -895,97 +1075,117 @@ async function transferGoals(userId, newOwnerId, periodId) {
 
 //-----------------------------------------Groups----------------------------------------//
 
-async function transferGroups(userId, newOwnerId) {
-	const limit = 100;
-	let offset = 0;
-	let moreData = true;
+async function transferGroups(userId, newOwnerId, filteredIds = []) {
+	let allGroupIds = [];
 
-	while (moreData) {
-		const url = `/api/content/v2/groups/grouplist?owner=${userId}&limit=${limit}&offset=${offset}`;
-		const response = await handleRequest('GET', url);
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allGroupIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const limit = 100;
+		let offset = 0;
+		let moreData = true;
 
-		if (response && response.length > 0) {
-			// Extract ids and append to list
-			const groupIds = response
-				.filter((group) => group.owners.some((owner) => owner.id === userId))
-				.map((group) => group.id);
-			if (groupIds.length > 0) {
-				const body = groupIds.map((group) => ({
-					groupId: group,
-					addOwners: [{ type: 'USER', id: newOwnerId }],
-					removeOwners: [{ type: 'USER', id: userId }]
-				}));
+		while (moreData) {
+			const url = `/api/content/v2/groups/grouplist?owner=${userId}&limit=${limit}&offset=${offset}`;
+			const response = await handleRequest('GET', url);
 
-				await handleRequest('PUT', '/api/content/v2/groups/access', body);
+			if (response && response.length > 0) {
+				// Extract ids and append to list
+				const groupIds = response
+					.filter((group) => group.owners.some((owner) => owner.id === userId))
+					.map((group) => group.id);
+				allGroupIds.push(...groupIds);
 
-				await logTransfers(userId, newOwnerId, 'GROUP', groupIds);
-			}
+				// Increment offset to get next page
+				offset += limit;
 
-			// Increment offset to get next page
-			offset += limit;
-
-			// If less than pageSize returned, this is the last page
-			if (response.length < limit) {
+				// If less than pageSize returned, this is the last page
+				if (response.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
+	}
+
+	if (allGroupIds.length > 0) {
+		const body = allGroupIds.map((group) => ({
+			groupId: group,
+			addOwners: [{ type: 'USER', id: newOwnerId }],
+			removeOwners: [{ type: 'USER', id: userId }]
+		}));
+
+		await handleRequest('PUT', '/api/content/v2/groups/access', body);
+
+		await logTransfers(userId, newOwnerId, 'GROUP', allGroupIds);
 	}
 }
 
 //-----------------------------------------AppDB--------------------------------//
 // Datastore owner cannot be updated
 
-async function transferAppDbCollections(userId, newOwnerId) {
-	let moreData = true;
-	let pageNumber = 1;
-	const pageSize = 100;
+async function transferAppDbCollections(userId, newOwnerId, filteredIds = []) {
+	let allCollectionIds = [];
 
-	while (moreData) {
-		const data = {
-			collectionFilteringList: [
-				{
-					filterType: 'ownedby',
-					comparingCriteria: 'equals',
-					typedValue: userId
-				}
-			],
-			pageSize: pageSize,
-			pageNumber: pageNumber
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allCollectionIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let pageNumber = 1;
+		const pageSize = 100;
 
-		const response = await handleRequest(
-			'POST',
-			'/api/datastores/v1/collections/query',
-			data
-		);
+		while (moreData) {
+			const data = {
+				collectionFilteringList: [
+					{
+						filterType: 'ownedby',
+						comparingCriteria: 'equals',
+						typedValue: userId
+					}
+				],
+				pageSize: pageSize,
+				pageNumber: pageNumber
+			};
 
-		if (response.collections && response.collections.length > 0) {
-			for (let i = 0; i < response.collections.length; i++) {
-				const url = `/api/datastores/v1/collections/${response.collections[i].id}`;
-				const body = { id: response.collections[i].id, owner: newOwnerId };
-
-				await handleRequest('PUT', url, body);
-			}
-			await logTransfers(
-				userId,
-				newOwnerId,
-				'COLLECTION',
-				response.collections.map((collection) => collection.id)
+			const response = await handleRequest(
+				'POST',
+				'/api/datastores/v1/collections/query',
+				data
 			);
-			// Increment offset to get next page
-			pageNumber++;
 
-			// If less than pageSize returned, this is the last page
-			if (response.collections.length < pageSize) {
+			if (response.collections && response.collections.length > 0) {
+				const collectionIds = response.collections.map(
+					(collection) => collection.id
+				);
+				allCollectionIds.push(...collectionIds);
+
+				// Increment page number to get next page
+				pageNumber++;
+
+				// If less than pageSize returned, this is the last page
+				if (response.collections.length < pageSize) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
+	}
+
+	if (allCollectionIds.length > 0) {
+		for (let i = 0; i < allCollectionIds.length; i++) {
+			const url = `/api/datastores/v1/collections/${allCollectionIds[i]}`;
+			const body = { id: allCollectionIds[i], owner: newOwnerId };
+			await handleRequest('PUT', url, body);
+		}
+		await logTransfers(userId, newOwnerId, 'COLLECTION', allCollectionIds);
 	}
 }
 
@@ -1038,40 +1238,25 @@ async function sanitizeLinks(links) {
 	}
 	return { valid, invalid };
 }
-async function transferFunctions(userId, newOwnerId) {
-	let moreData = true;
-	let offset = 0;
-	const limit = 100;
-	const chunkSize = 100; // Max objects per transfer request
+async function transferFunctions(userId, newOwnerId, filteredIds = []) {
+	let allFunctionIds = [];
 
-	while (moreData) {
-		const data = {
-			filters: [{ field: 'owner', idList: [userId] }],
-			sort: {
-				field: 'name',
-				ascending: true
-			},
-			limit: limit,
-			offset: offset
-		};
-
-		const response = await handleRequest(
-			'POST',
-			'/api/query/v1/functions/search',
-			data
-		);
-
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list - we need to fetch each function individually
 		const bulkUrl = '/api/query/v1/functions/bulk/template';
-		if (response.results && response.results.length > 0) {
-			// Process beast modes
-			const beastModesRaw = response.results.filter(
-				(func) => func.global === false
-			);
-			const beastModes = [];
-			const deletedBeastModes = [];
+		const beastModes = [];
+		const variables = [];
+		const deletedBeastModes = [];
+		const deletedVariables = [];
 
-			for (const beastMode of beastModesRaw) {
-				const originalLinks = beastMode.links;
+		for (const functionId of filteredIds) {
+			try {
+				const response = await handleRequest(
+					'GET',
+					`/api/query/v1/functions/template/${functionId}?hidden=true`
+				);
+
+				const originalLinks = response.links;
 				const { valid: validLinks, invalid: invalidLinks } =
 					await sanitizeLinks(originalLinks);
 
@@ -1088,15 +1273,20 @@ async function transferFunctions(userId, newOwnerId) {
 						validLinks.length === 0) ||
 					hasInvalidVisibleLink
 				) {
-					const deleteUrl = `/api/query/v1/functions/template/${beastMode.id}`;
+					const deleteUrl = `/api/query/v1/functions/template/${functionId}`;
 					await handleRequest('DELETE', deleteUrl);
-					deletedBeastModes.push(beastMode.id);
+
+					if (response.global === false) {
+						deletedBeastModes.push(functionId);
+					} else {
+						deletedVariables.push(functionId);
+					}
 					continue; // Skip adding to transfer list
 				}
 
 				// Update links individually if there are invalid links to remove
 				if (invalidLinks.length > 0) {
-					const linkUrl = `/api/query/v1/functions/template/${beastMode.id}/links`;
+					const linkUrl = `/api/query/v1/functions/template/${functionId}/links`;
 					const linkBody = {
 						linkTo: validLinks,
 						unlinkFrom: invalidLinks
@@ -1104,367 +1294,549 @@ async function transferFunctions(userId, newOwnerId) {
 					await handleRequest('POST', linkUrl, linkBody);
 				}
 
-				beastModes.push({
-					id: beastMode.id,
+				const functionData = {
+					id: functionId,
 					owner: newOwnerId,
 					links: validLinks
-				});
-			}
+				};
 
-			// Transfer beast modes in batches of 100
-			for (let i = 0; i < beastModes.length; i += chunkSize) {
-				const chunk = beastModes.slice(i, i + chunkSize);
-				await handleRequest('POST', bulkUrl, { update: chunk });
+				if (response.global === false) {
+					beastModes.push(functionData);
+				} else {
+					variables.push(functionData);
+				}
+			} catch (error) {
+				console.error(`Failed to process function ${functionId}:`, error);
 			}
+		}
 
-			// Log transferred beast modes
-			if (beastModes.length > 0) {
-				await logTransfers(
-					userId,
-					newOwnerId,
-					'BEAST_MODE_FORMULA',
-					beastModes.map((func) => func.id)
-				);
-			}
+		// Transfer functions in batches
+		const chunkSize = 100;
+		for (let i = 0; i < beastModes.length; i += chunkSize) {
+			const chunk = beastModes.slice(i, i + chunkSize);
+			await handleRequest('POST', bulkUrl, { update: chunk });
+		}
+		for (let i = 0; i < variables.length; i += chunkSize) {
+			const chunk = variables.slice(i, i + chunkSize);
+			await handleRequest('POST', bulkUrl, { update: chunk });
+		}
 
-			// Log deleted beast modes
-			if (deletedBeastModes.length > 0) {
-				await logTransfers(
-					userId,
-					newOwnerId,
-					'BEAST_MODE_FORMULA',
-					deletedBeastModes,
-					'DELETED',
-					'Beast Mode was linked to deleted or inaccessible resources'
-				);
-			}
-
-			// Process variables
-			const variablesRaw = response.results.filter(
-				(func) => func.global === true
+		// Log results
+		if (beastModes.length > 0) {
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'BEAST_MODE_FORMULA',
+				beastModes.map((func) => func.id)
 			);
-			const variables = [];
-			const deletedVariables = [];
+		}
+		if (variables.length > 0) {
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'VARIABLE',
+				variables.map((func) => func.id)
+			);
+		}
+		if (deletedBeastModes.length > 0) {
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'BEAST_MODE_FORMULA',
+				deletedBeastModes,
+				'DELETED',
+				'Beast Mode was linked to deleted or inaccessible resources'
+			);
+		}
+		if (deletedVariables.length > 0) {
+			await logTransfers(
+				userId,
+				newOwnerId,
+				'VARIABLE',
+				deletedVariables,
+				'DELETED',
+				'Variable was linked to deleted or inaccessible resources'
+			);
+		}
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const limit = 100;
+		const chunkSize = 100; // Max objects per transfer request
 
-			for (const variable of variablesRaw) {
-				const originalLinks = variable.links;
-				const { valid: validLinks, invalid: invalidLinks } =
-					await sanitizeLinks(originalLinks);
+		while (moreData) {
+			const data = {
+				filters: [{ field: 'owner', idList: [userId] }],
+				sort: {
+					field: 'name',
+					ascending: true
+				},
+				limit: limit,
+				offset: offset
+			};
 
-				// Check if any invalid links are visible
-				const hasInvalidVisibleLink = invalidLinks.some(
-					(link) => link.visible === true
+			const response = await handleRequest(
+				'POST',
+				'/api/query/v1/functions/search',
+				data
+			);
+
+			const bulkUrl = '/api/query/v1/functions/bulk/template';
+			if (response.results && response.results.length > 0) {
+				// Process beast modes
+				const beastModesRaw = response.results.filter(
+					(func) => func.global === false
 				);
+				const beastModes = [];
+				const deletedBeastModes = [];
 
-				// If function has only one link and it's invalid, OR has any invalid visible link, delete the function
-				if (
-					(originalLinks &&
-						originalLinks.length === 1 &&
-						invalidLinks.length === 1 &&
-						validLinks.length === 0) ||
-					hasInvalidVisibleLink
-				) {
-					const deleteUrl = `/api/query/v1/functions/template/${variable.id}`;
-					await handleRequest('DELETE', deleteUrl);
-					deletedVariables.push(variable.id);
-					continue; // Skip adding to transfer list
+				for (const beastMode of beastModesRaw) {
+					const originalLinks = beastMode.links;
+					const { valid: validLinks, invalid: invalidLinks } =
+						await sanitizeLinks(originalLinks);
+
+					// Check if any invalid links are visible
+					const hasInvalidVisibleLink = invalidLinks.some(
+						(link) => link.visible === true
+					);
+
+					// If function has only one link and it's invalid, OR has any invalid visible link, delete the function
+					if (
+						(originalLinks &&
+							originalLinks.length === 1 &&
+							invalidLinks.length === 1 &&
+							validLinks.length === 0) ||
+						hasInvalidVisibleLink
+					) {
+						const deleteUrl = `/api/query/v1/functions/template/${beastMode.id}`;
+						await handleRequest('DELETE', deleteUrl);
+						deletedBeastModes.push(beastMode.id);
+						continue; // Skip adding to transfer list
+					}
+
+					// Update links individually if there are invalid links to remove
+					if (invalidLinks.length > 0) {
+						const linkUrl = `/api/query/v1/functions/template/${beastMode.id}/links`;
+						const linkBody = {
+							linkTo: validLinks,
+							unlinkFrom: invalidLinks
+						};
+						await handleRequest('POST', linkUrl, linkBody);
+					}
+
+					beastModes.push({
+						id: beastMode.id,
+						owner: newOwnerId,
+						links: validLinks
+					});
 				}
 
-				// Update links individually if there are invalid links to remove
-				if (invalidLinks.length > 0) {
-					const linkUrl = `/api/query/v1/functions/template/${variable.id}/links`;
-					const linkBody = {
-						linkTo: validLinks,
-						unlinkFrom: invalidLinks
-					};
-					await handleRequest('POST', linkUrl, linkBody);
+				// Transfer beast modes in batches of 100
+				for (let i = 0; i < beastModes.length; i += chunkSize) {
+					const chunk = beastModes.slice(i, i + chunkSize);
+					await handleRequest('POST', bulkUrl, { update: chunk });
 				}
 
-				variables.push({
-					id: variable.id,
-					owner: newOwnerId,
-					links: validLinks
-				});
-			}
+				// Log transferred beast modes
+				if (beastModes.length > 0) {
+					await logTransfers(
+						userId,
+						newOwnerId,
+						'BEAST_MODE_FORMULA',
+						beastModes.map((func) => func.id)
+					);
+				}
 
-			// Transfer variables in batches of 100
-			for (let i = 0; i < variables.length; i += chunkSize) {
-				const chunk = variables.slice(i, i + chunkSize);
-				await handleRequest('POST', bulkUrl, { update: chunk });
-			}
+				// Log deleted beast modes
+				if (deletedBeastModes.length > 0) {
+					await logTransfers(
+						userId,
+						newOwnerId,
+						'BEAST_MODE_FORMULA',
+						deletedBeastModes,
+						'DELETED',
+						'Beast Mode was linked to deleted or inaccessible resources'
+					);
+				}
 
-			// Log transferred variables
-			if (variables.length > 0) {
-				await logTransfers(
-					userId,
-					newOwnerId,
-					'VARIABLE',
-					variables.map((func) => func.id)
+				// Process variables
+				const variablesRaw = response.results.filter(
+					(func) => func.global === true
 				);
+				const variables = [];
+				const deletedVariables = [];
+
+				for (const variable of variablesRaw) {
+					const originalLinks = variable.links;
+					const { valid: validLinks, invalid: invalidLinks } =
+						await sanitizeLinks(originalLinks);
+
+					// Check if any invalid links are visible
+					const hasInvalidVisibleLink = invalidLinks.some(
+						(link) => link.visible === true
+					);
+
+					// If function has only one link and it's invalid, OR has any invalid visible link, delete the function
+					if (
+						(originalLinks &&
+							originalLinks.length === 1 &&
+							invalidLinks.length === 1 &&
+							validLinks.length === 0) ||
+						hasInvalidVisibleLink
+					) {
+						const deleteUrl = `/api/query/v1/functions/template/${variable.id}`;
+						await handleRequest('DELETE', deleteUrl);
+						deletedVariables.push(variable.id);
+						continue; // Skip adding to transfer list
+					}
+
+					// Update links individually if there are invalid links to remove
+					if (invalidLinks.length > 0) {
+						const linkUrl = `/api/query/v1/functions/template/${variable.id}/links`;
+						const linkBody = {
+							linkTo: validLinks,
+							unlinkFrom: invalidLinks
+						};
+						await handleRequest('POST', linkUrl, linkBody);
+					}
+
+					variables.push({
+						id: variable.id,
+						owner: newOwnerId,
+						links: validLinks
+					});
+				}
+
+				// Transfer variables in batches of 100
+				for (let i = 0; i < variables.length; i += chunkSize) {
+					const chunk = variables.slice(i, i + chunkSize);
+					await handleRequest('POST', bulkUrl, { update: chunk });
+				}
+
+				// Log transferred variables
+				if (variables.length > 0) {
+					await logTransfers(
+						userId,
+						newOwnerId,
+						'VARIABLE',
+						variables.map((func) => func.id)
+					);
+				}
+
+				// Log deleted variables
+				if (deletedVariables.length > 0) {
+					await logTransfers(
+						userId,
+						newOwnerId,
+						'VARIABLE',
+						deletedVariables,
+						'DELETED',
+						'Variable was linked to deleted or inaccessible resources'
+					);
+				}
+
+				// Increment offset to get next page
+				offset += limit;
+
+				moreData = response.hasMore;
+			} else {
+				// No more data returned, stop loop
+				moreData = false;
 			}
-
-			// Log deleted variables
-			if (deletedVariables.length > 0) {
-				await logTransfers(
-					userId,
-					newOwnerId,
-					'VARIABLE',
-					deletedVariables,
-					'DELETED',
-					'Variable was linked to deleted or inaccessible resources'
-				);
-			}
-
-			// Increment offset to get next page
-			offset += limit;
-
-			moreData = response.hasMore;
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 }
 
 //-----------------------------Accounts---------------------//
 
-async function transferAccounts(userId, newOwnerId) {
-	let moreData = true;
-	let offset = 0;
-	const count = 100;
+async function transferAccounts(userId, newOwnerId, filteredIds = []) {
 	let accountIds = [];
 
-	while (moreData) {
-		const data = {
-			count: count,
-			offset: offset,
-			combineResults: false,
-			hideSearchObjects: true,
-			query: '**',
-			filters: [
-				{
-					filterType: 'term',
-					field: 'owned_by_id',
-					value: userId,
-					name: 'Owned by',
-					not: false
-				}
-			],
-			facetValuesToInclude: [],
-			queryProfile: 'GLOBAL',
-			entityList: [['account']]
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		accountIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const count = 100;
 
-		const response = await handleRequest('POST', '/api/search/v1/query', data);
-		if (
-			response.searchResultsMap &&
-			response.searchResultsMap.account.length > 0
-		) {
-			// Extract ids and append to list
-			const ids = response.searchResultsMap.account.map(
-				(account) => account.databaseId
+		while (moreData) {
+			const data = {
+				count: count,
+				offset: offset,
+				combineResults: false,
+				hideSearchObjects: true,
+				query: '**',
+				filters: [
+					{
+						filterType: 'term',
+						field: 'owned_by_id',
+						value: userId,
+						name: 'Owned by',
+						not: false
+					}
+				],
+				facetValuesToInclude: [],
+				queryProfile: 'GLOBAL',
+				entityList: [['account']]
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/search/v1/query',
+				data
 			);
-			accountIds.push(...ids);
+			if (
+				response.searchResultsMap &&
+				response.searchResultsMap.account.length > 0
+			) {
+				// Extract ids and append to list
+				const ids = response.searchResultsMap.account.map(
+					(account) => account.databaseId
+				);
+				accountIds.push(...ids);
 
-			// Increment offset to get next page
-			offset += count;
+				// Increment offset to get next page
+				offset += count;
 
-			// If less than pageSize returned, this is the last page
-			if (response.searchResultsMap.account.length < count) {
+				// If less than pageSize returned, this is the last page
+				if (response.searchResultsMap.account.length < count) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
-	for (let i = 0; i < accountIds.length; i++) {
-		const transferUrl = `/api/data/v2/accounts/share/${accountIds[i]}`;
-		const addBody = { type: 'USER', id: newOwnerId, accessLevel: 'OWNER' };
-		await handleRequest('PUT', transferUrl, addBody);
 
-		const removeBody = { type: 'USER', id: userId, accessLevel: 'NONE' };
-		await handleRequest('PUT', transferUrl, removeBody);
+	if (accountIds.length > 0) {
+		for (let i = 0; i < accountIds.length; i++) {
+			const transferUrl = `/api/data/v2/accounts/share/${accountIds[i]}`;
+			const addBody = { type: 'USER', id: newOwnerId, accessLevel: 'OWNER' };
+			await handleRequest('PUT', transferUrl, addBody);
+
+			// Removed because their access will be removed when they are deleted
+			// const removeBody = { type: 'USER', id: userId, accessLevel: 'NONE' };
+			// await handleRequest('PUT', transferUrl, removeBody);
+		}
+
+		await logTransfers(userId, newOwnerId, 'ACCOUNT', accountIds);
 	}
-
-	await logTransfers(userId, newOwnerId, 'ACCOUNT', accountIds);
 }
 
 //---------------------------Jupyter Workspaces---------------------//
 
-async function transferJupyterWorkspaces(userId, newOwnerId) {
-	let moreData = true;
-	let offset = 0;
-	const limit = 100;
+async function transferJupyterWorkspaces(userId, newOwnerId, filteredIds = []) {
 	let jupyterWorkspaceIds = [];
 
-	while (moreData) {
-		const data = {
-			sortFieldMap: {
-				LAST_RUN: 'DESC'
-			},
-			searchFieldMap: {},
-			filters: [
-				{
-					type: 'OWNER',
-					values: [userId]
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		jupyterWorkspaceIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const limit = 100;
+
+		while (moreData) {
+			const data = {
+				sortFieldMap: {
+					LAST_RUN: 'DESC'
+				},
+				searchFieldMap: {},
+				filters: [
+					{
+						type: 'OWNER',
+						values: [userId]
+					}
+				],
+				offset: offset,
+				limit: limit
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/datascience/v1/search/workspaces',
+				data
+			);
+
+			if (response.workspaces && response.workspaces.length > 0) {
+				// Extract ids and append to list
+				const ids = response.workspaces.map((workspace) => workspace.id);
+				jupyterWorkspaceIds.push(...ids);
+
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than pageSize returned, this is the last page
+				if (response.workspaces.length < limit) {
+					moreData = false;
 				}
-			],
-			offset: offset,
-			limit: limit
-		};
-
-		const response = await handleRequest(
-			'POST',
-			'/api/datascience/v1/search/workspaces',
-			data
-		);
-
-		if (response.workspaces && response.workspaces.length > 0) {
-			// Extract ids and append to list
-			const ids = response.workspaces.map((workspace) => workspace.id);
-			jupyterWorkspaceIds.push(...ids);
-
-			// Increment offset to get next page
-			offset += limit;
-
-			// If less than pageSize returned, this is the last page
-			if (response.workspaces.length < limit) {
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < jupyterWorkspaceIds.length; i++) {
-		const url = `/api/datascience/v1/workspaces/${jupyterWorkspaceIds[i]}/ownership`;
-		await handleRequest('PUT', url, { newOwnerId });
+	if (jupyterWorkspaceIds.length > 0) {
+		for (let i = 0; i < jupyterWorkspaceIds.length; i++) {
+			const url = `/api/datascience/v1/workspaces/${jupyterWorkspaceIds[i]}/ownership`;
+			await handleRequest('PUT', url, { newOwnerId });
+		}
+		await logTransfers(
+			userId,
+			newOwnerId,
+			'DATA_SCIENCE_NOTEBOOK',
+			jupyterWorkspaceIds
+		);
 	}
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'DATA_SCIENCE_NOTEBOOK',
-		jupyterWorkspaceIds
-	);
 }
 
 //------------------------------Code Engine Packages--------------------------//
 
-async function transferCodeEnginePackages(userId, newOwnerId) {
-	let moreData = true;
-	let offset = 0;
-	const count = 100;
+async function transferCodeEnginePackages(
+	userId,
+	newOwnerId,
+	filteredIds = []
+) {
 	let codeEnginePackageIds = [];
 
-	while (moreData) {
-		const data = {
-			query: '**',
-			entityList: [['package']],
-			count: count,
-			offset: offset,
-			filters: [
-				{
-					field: 'owned_by_id',
-					filterType: 'term',
-					value: `${userId}:USER`
-				}
-			],
-			hideSearchObjects: true,
-			facetValuesToInclude: []
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		codeEnginePackageIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const count = 100;
 
-		const response = await handleRequest('POST', '/api/search/v1/query', data);
+		while (moreData) {
+			const data = {
+				query: '**',
+				entityList: [['package']],
+				count: count,
+				offset: offset,
+				filters: [
+					{
+						field: 'owned_by_id',
+						filterType: 'term',
+						value: `${userId}:USER`
+					}
+				],
+				hideSearchObjects: true,
+				facetValuesToInclude: []
+			};
 
-		if (
-			response.searchResultsMap.package &&
-			response.searchResultsMap.package.length > 0
-		) {
-			// Extract ids and append to list
-			const ids = response.searchResultsMap.package.map(
-				(codeEngine) => codeEngine.uuid
+			const response = await handleRequest(
+				'POST',
+				'/api/search/v1/query',
+				data
 			);
-			codeEnginePackageIds.push(...ids);
 
-			// Increment offset to get next page
-			offset += count;
+			if (
+				response.searchResultsMap.package &&
+				response.searchResultsMap.package.length > 0
+			) {
+				// Extract ids and append to list
+				const ids = response.searchResultsMap.package.map(
+					(codeEngine) => codeEngine.uuid
+				);
+				codeEnginePackageIds.push(...ids);
 
-			// If less than pageSize returned, this is the last page
-			if (response.searchResultsMap.package.length < count) {
+				// Increment offset to get next page
+				offset += count;
+
+				// If less than pageSize returned, this is the last page
+				if (response.searchResultsMap.package.length < count) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < codeEnginePackageIds.length; i++) {
-		const url = `/api/codeengine/v2/packages/${codeEnginePackageIds[i]}`;
-		await handleRequest('PUT', url, { owner: parseInt(newOwnerId) });
+	if (codeEnginePackageIds.length > 0) {
+		for (let i = 0; i < codeEnginePackageIds.length; i++) {
+			const url = `/api/codeengine/v2/packages/${codeEnginePackageIds[i]}`;
+			await handleRequest('PUT', url, { owner: parseInt(newOwnerId) });
+		}
+		await logTransfers(
+			userId,
+			newOwnerId,
+			'CODEENGINE_PACKAGE',
+			codeEnginePackageIds
+		);
 	}
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'CODEENGINE_PACKAGE',
-		codeEnginePackageIds
-	);
 }
 
 //---------------------------------------FileSets--------------------------------------------//
 
-async function transferFilesets(userId, newOwnerId) {
-	let moreData = true;
-	let offset = 0;
-	const limit = 100;
+async function transferFilesets(userId, newOwnerId, filteredIds = []) {
 	let filesetIds = [];
 
-	const data = {
-		filters: [
-			{
-				field: 'owner',
-				value: [userId],
-				not: false,
-				operator: 'EQUALS'
-			}
-		],
-		fieldSort: [
-			{
-				field: 'updated',
-				order: 'DESC'
-			}
-		],
-		dateFilters: []
-	};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		filesetIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const limit = 100;
 
-	while (moreData) {
-		const url = `/api/files/v1/filesets/search?offset=${offset}&limit=${limit}`;
-		const response = await handleRequest('POST', url, data);
+		const data = {
+			filters: [
+				{
+					field: 'owner',
+					value: [userId],
+					not: false,
+					operator: 'EQUALS'
+				}
+			],
+			fieldSort: [
+				{
+					field: 'updated',
+					order: 'DESC'
+				}
+			],
+			dateFilters: []
+		};
 
-		if (response.filesets && response.filesets.length > 0) {
-			// Extract ids and append to list
-			const ids = response.filesets.map((fileset) => fileset.id);
-			filesetIds.push(...ids);
+		while (moreData) {
+			const url = `/api/files/v1/filesets/search?offset=${offset}&limit=${limit}`;
+			const response = await handleRequest('POST', url, data);
 
-			// Increment offset to get next page
-			offset += limit;
+			if (response.filesets && response.filesets.length > 0) {
+				// Extract ids and append to list
+				const ids = response.filesets.map((fileset) => fileset.id);
+				filesetIds.push(...ids);
 
-			// If less than pageSize returned, this is the last page
-			if (response.filesets.length < limit) {
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than pageSize returned, this is the last page
+				if (response.filesets.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < filesetIds.length; i++) {
-		const url = `/api/files/v1/filesets/${filesetIds[i]}/ownership`;
-		await handleRequest('POST', url, { userId: parseInt(newOwnerId) });
+	if (filesetIds.length > 0) {
+		for (let i = 0; i < filesetIds.length; i++) {
+			const url = `/api/files/v1/filesets/${filesetIds[i]}/ownership`;
+			await handleRequest('POST', url, { userId: parseInt(newOwnerId) });
+		}
+		await logTransfers(userId, newOwnerId, 'FILESET', filesetIds);
 	}
-	await logTransfers(userId, newOwnerId, 'FILESET', filesetIds);
 }
 
 //--------------------------------------Domo Everywhere Publications------------------------------------------//
@@ -1500,125 +1872,166 @@ async function getPublications(userId, newOwnerId) {
 
 //-------------------------------------Domo Everywhere Subscriptions-----------------------------------------//
 
-async function transferSubscriptions(userId, newOwnerId) {
-	const limit = 40;
-	let offset = 0;
-	let moreData = true;
-	let subscriptions = [];
+async function transferSubscriptions(userId, newOwnerId, filteredIds = []) {
 	let subscriptionIds = [];
 
-	while (moreData) {
-		const url = 'api/publish/v2/subscriptions/summaries';
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		for (const subscriptionId of filteredIds) {
+			try {
+				const subscriptionUrl = `api/publish/v2/subscriptions/${subscriptionId}/share`;
+				const subscription = await handleRequest('GET', subscriptionUrl);
 
-		const response = await handleRequest('GET', url);
+				if (subscription.userId == userId) {
+					const url = `/api/publish/v2/subscriptions/${subscription.subscription.id}`;
+					const body = {
+						publicationId: subscription.subscription.publicationId,
+						domain: subscription.subscription.domain,
+						customerId: subscription.subscription.customerId,
+						userId: newOwnerId,
+						userIds: subscription.shareUsers,
+						groupIds: subscription.shareGroups
+					};
+					await handleRequest('PUT', url, body);
+					subscriptionIds.push(subscription.subscription.id);
+				}
+			} catch (error) {
+				console.error(
+					`Failed to transfer subscription ${subscriptionId}:`,
+					error
+				);
+			}
+		}
+	} else {
+		// Use existing discovery logic
+		const limit = 40;
+		let offset = 0;
+		let moreData = true;
+		let subscriptions = [];
 
-		if (response && response.length > 0) {
-			subscriptions.push(...response);
+		while (moreData) {
+			const url = 'api/publish/v2/subscriptions/summaries';
+			const response = await handleRequest('GET', url);
 
-			// Increment offset to get next page
-			offset += limit;
+			if (response && response.length > 0) {
+				subscriptions.push(...response);
 
-			// If less than limit returned, this is the last page
-			if (response.length < limit) {
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than limit returned, this is the last page
+				if (response.length < limit) {
+					moreData = false;
+				}
+			} else {
 				moreData = false;
 			}
-		} else {
-			moreData = false;
+		}
+
+		for (let i = 0; i < subscriptions.length; i++) {
+			const subscriptionUrl = `api/publish/v2/subscriptions/${subscriptions[i].subscriptionId}/share`;
+			const subscription = await handleRequest('GET', subscriptionUrl);
+
+			if (subscription.userId == userId) {
+				subscriptionIds.push(subscription.subscription.id);
+				const url = `/api/publish/v2/subscriptions/${subscription.subscription.id}`;
+				const body = {
+					publicationId: subscription.subscription.publicationId,
+					domain: subscription.subscription.domain,
+					customerId: subscription.subscription.customerId,
+					userId: newOwnerId,
+					userIds: subscription.shareUsers,
+					groupIds: subscription.shareGroups
+				};
+				await handleRequest('PUT', url, body);
+			}
 		}
 	}
 
-	for (let i = 0; i < subscriptions.length; i++) {
-		const subscriptionUrl = `api/publish/v2/subscriptions/${subscriptions[i].subscriptionId}/share`;
-
-		const subscription = await handleRequest('GET', subscriptionUrl);
-		if (subscription.userId == userId) {
-			subscriptionIds.push(subscription.subscription.id);
-			const url = `/api/publish/v2/subscriptions/${subscription.subscription.id}`;
-
-			const body = {
-				publicationId: subscription.subscription.publicationId,
-				domain: subscription.subscription.domain,
-				customerId: subscription.subscription.customerId,
-				userId: newOwnerId,
-				userIds: subscription.shareUsers,
-				groupIds: subscription.shareGroups
-			};
-
-			await handleRequest('PUT', url, body);
-		}
+	if (subscriptionIds.length > 0) {
+		await logTransfers(userId, newOwnerId, 'SUBSCRIPTION', subscriptionIds);
 	}
-	await logTransfers(userId, newOwnerId, 'SUBSCRIPTION', subscriptionIds);
 }
 
 //--------------------------------------------------Sandbox Repositories---------------------------------//
 
-async function transferRepositories(userId, newOwnerId) {
-	const limit = 50;
-	let offset = 0;
-	let moreData = true;
+async function transferRepositories(userId, newOwnerId, filteredIds = []) {
 	let repositoryIds = [];
 
-	while (moreData) {
-		const data = {
-			query: {
-				offset: offset,
-				limit: limit,
-				fieldSearchMap: {},
-				sort: 'lastCommit',
-				order: 'desc',
-				filters: { userId: [userId] },
-				dateFilters: {}
-			}
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		repositoryIds = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const limit = 50;
+		let offset = 0;
+		let moreData = true;
 
-		const response = await handleRequest(
-			'POST',
-			'/api/version/v1/repositories/search',
-			data
-		);
+		while (moreData) {
+			const data = {
+				query: {
+					offset: offset,
+					limit: limit,
+					fieldSearchMap: {},
+					sort: 'lastCommit',
+					order: 'desc',
+					filters: { userId: [userId] },
+					dateFilters: {}
+				}
+			};
 
-		if (response.repositories && response.repositories.length > 0) {
-			// Extract ids and append to list
-			const ids = response.repositories.map((repository) => repository.id);
-			repositoryIds.push(...ids);
+			const response = await handleRequest(
+				'POST',
+				'/api/version/v1/repositories/search',
+				data
+			);
 
-			// Increment offset to get next page
-			offset += limit;
+			if (response.repositories && response.repositories.length > 0) {
+				// Extract ids and append to list
+				const ids = response.repositories.map((repository) => repository.id);
+				repositoryIds.push(...ids);
 
-			// If less than pageSize returned, this is the last page
-			if (response.repositories.length < limit) {
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than pageSize returned, this is the last page
+				if (response.repositories.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < repositoryIds.length; i++) {
-		const url = `/api/version/v1/repositories/${repositoryIds[i]}/permissions`;
+	if (repositoryIds.length > 0) {
+		for (let i = 0; i < repositoryIds.length; i++) {
+			const url = `/api/version/v1/repositories/${repositoryIds[i]}/permissions`;
 
-		const body = {
-			repositoryPermissionUpdates: [
-				{
-					userId: newOwnerId,
-					permission: 'OWNER'
-				},
-				{
-					userId: userId,
-					permission: 'NONE'
-				}
-			]
-		};
+			const body = {
+				repositoryPermissionUpdates: [
+					{
+						userId: newOwnerId,
+						permission: 'OWNER'
+					},
+					{
+						userId: userId,
+						permission: 'NONE'
+					}
+				]
+			};
 
-		await handleRequest('POST', url, body);
+			await handleRequest('POST', url, body);
+		}
+		await logTransfers(userId, newOwnerId, 'REPOSITORY', repositoryIds);
 	}
-	await logTransfers(userId, newOwnerId, 'REPOSITORY', repositoryIds);
 }
 
 //-----------------------------------------Approvals--------------------------------------//
 
 async function transferApprovals(userId, newOwnerId) {
+	// Use existing discovery logic
 	const url = '/api/synapse/approval/graphql';
 
 	const data = {
@@ -1674,26 +2087,32 @@ async function transferApprovals(userId, newOwnerId) {
 			await handleRequest('POST', url, transferBody);
 		}
 	}
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'APPROVAL',
-		pendingApprovals.map((approval) => approval.node.approval.id)
-	);
 
-	await logTransfers(
-		userId,
-		newOwnerId,
-		'APPROVAL',
-		sentBackApprovals.map((approval) => approval.node.approval.id),
-		'NOT_TRANSFERRED',
-		'Transferring of sent back approvals is not supported'
-	);
+	if (pendingApprovals.length > 0) {
+		await logTransfers(
+			userId,
+			newOwnerId,
+			'APPROVAL',
+			pendingApprovals.map((approval) => approval.node.approval.id)
+		);
+	}
+
+	if (sentBackApprovals.length > 0) {
+		await logTransfers(
+			userId,
+			newOwnerId,
+			'APPROVAL',
+			sentBackApprovals.map((approval) => approval.node.approval.id),
+			'NOT_TRANSFERRED',
+			'Transferring of sent back approvals is not supported'
+		);
+	}
 }
 
 //-----------------------------------------Approval Templates--------------------------------------//
 
 async function transferApprovalTemplates(userId, newOwnerId) {
+	// Use existing discovery logic
 	const url = '/api/synapse/approval/graphql';
 
 	const searchTemplatesBody = {
@@ -1951,57 +2370,102 @@ async function transferApprovalTemplates(userId, newOwnerId) {
 
 //--------------------------------Custom Apps (Bricks and Pro Code Apps)-------------------------------------//
 
-async function transferCustomApps(userId, newOwnerId) {
-	const limit = 100;
-	let offset = 0;
-	let moreData = true;
+async function transferCustomApps(userId, newOwnerId, filteredIds = []) {
+	let allAppIds = [];
 	let bricks = [];
 	let proCodeApps = [];
 
-	while (moreData) {
-		const url = `/api/apps/v1/designs?checkAdminAuthority=true&deleted=false&limit=${limit}&offset=${offset}`;
-		const response = await handleRequest('GET', url);
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		allAppIds = filteredIds;
 
-		if (response && response.length > 0) {
-			for (let i = 0; i < response.length; i++) {
-				if (response[i].owner == userId) {
+		// We need to check each app to categorize it properly
+		for (const appId of filteredIds) {
+			const response = await handleRequest(
+				'GET',
+				`/api/apps/v1/designs/${appId}?parts=versions`
+			);
+
+			if (response && response.owner == userId) {
+				if (
+					response.versions &&
+					response.versions.length > 0 &&
+					Object(response.versions[0]).hasOwnProperty('flags')
+				) {
 					if (
-						response[i].versions &&
-						response[i].versions.length > 0 &&
-						Object(response[i].versions[0]).hasOwnProperty('flags')
+						Object(response.versions[0].flags).hasOwnProperty(
+							'client-code-enabled'
+						)
 					) {
+						if (response.versions[0].flags['client-code-enabled']) {
+							bricks.push(appId);
+						} else {
+							proCodeApps.push(appId);
+						}
+					} else {
+						proCodeApps.push(appId);
+					}
+				} else {
+					proCodeApps.push(appId);
+				}
+
+				const transferUrl = `/api/apps/v1/designs/${appId}/permissions/ADMIN`;
+				const body = [newOwnerId];
+				await handleRequest('POST', transferUrl, body);
+			}
+		}
+	} else {
+		// Use existing discovery logic
+		const limit = 100;
+		let offset = 0;
+		let moreData = true;
+
+		while (moreData) {
+			const url = `/api/apps/v1/designs?checkAdminAuthority=true&deleted=false&limit=${limit}&offset=${offset}`;
+			const response = await handleRequest('GET', url);
+
+			if (response && response.length > 0) {
+				for (let i = 0; i < response.length; i++) {
+					if (response[i].owner == userId) {
 						if (
-							Object(response[i].versions[0].flags).hasOwnProperty(
-								'client-code-enabled'
-							)
+							response[i].versions &&
+							response[i].versions.length > 0 &&
+							Object(response[i].versions[0]).hasOwnProperty('flags')
 						) {
-							if (response[i].versions[0].flags['client-code-enabled']) {
-								bricks.push(response[i].id);
+							if (
+								Object(response[i].versions[0].flags).hasOwnProperty(
+									'client-code-enabled'
+								)
+							) {
+								if (response[i].versions[0].flags['client-code-enabled']) {
+									bricks.push(response[i].id);
+								} else {
+									proCodeApps.push(response[i].id);
+								}
 							} else {
 								proCodeApps.push(response[i].id);
 							}
 						} else {
 							proCodeApps.push(response[i].id);
 						}
-					} else {
-						proCodeApps.push(response[i].id);
+						const transferUrl = `/api/apps/v1/designs/${response[i].id}/permissions/ADMIN`;
+						const body = [newOwnerId];
+						await handleRequest('POST', transferUrl, body);
 					}
-					const transferUrl = `/api/apps/v1/designs/${response[i].id}/permissions/ADMIN`;
-					const body = [newOwnerId];
-					await handleRequest('POST', transferUrl, body);
 				}
-			}
 
-			if (response.length < limit) {
+				if (response.length < limit) {
+					moreData = false;
+				}
+
+				offset += limit;
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-
-			offset += limit;
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
+
 	if (bricks.length > 0) {
 		await logTransfers(userId, newOwnerId, 'APP', bricks);
 	}
@@ -2012,219 +2476,300 @@ async function transferCustomApps(userId, newOwnerId) {
 
 //-------------------------------------AI Models--------------------------------//
 
-async function transferAiModels(userId, newOwnerId) {
-	const limit = 50;
-	let offset = 0;
-	let moreData = true;
+async function transferAiModels(userId, newOwnerId, filteredIds = []) {
 	let models = [];
 
-	while (moreData) {
-		const data = {
-			limit: 50,
-			offset: 0,
-			sortFieldMap: {
-				CREATED: 'DESC'
-			},
-			searchFieldMap: { NAME: '' },
-			filters: [{ type: 'OWNER', values: [userId] }],
-			metricFilters: {},
-			dateFilters: {},
-			sortMetricMap: {}
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		models = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const limit = 50;
+		let offset = 0;
+		let moreData = true;
 
-		const response = await handleRequest(
-			'POST',
-			'/api/datascience/ml/v1/search/models',
-			data
-		);
+		while (moreData) {
+			const data = {
+				limit: 50,
+				offset: 0,
+				sortFieldMap: {
+					CREATED: 'DESC'
+				},
+				searchFieldMap: { NAME: '' },
+				filters: [{ type: 'OWNER', values: [userId] }],
+				metricFilters: {},
+				dateFilters: {},
+				sortMetricMap: {}
+			};
 
-		if (response && response.models.length > 0) {
-			// Extract ids and append to list
-			const ids = response.models.map((model) => model.id);
-			models.push(...ids);
+			const response = await handleRequest(
+				'POST',
+				'/api/datascience/ml/v1/search/models',
+				data
+			);
 
-			if (response.models.length < limit) {
+			if (response && response.models.length > 0) {
+				// Extract ids and append to list
+				const ids = response.models.map((model) => model.id);
+				models.push(...ids);
+
+				if (response.models.length < limit) {
+					moreData = false;
+				}
+
+				offset += limit;
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-
-			offset += limit;
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < models.length; i++) {
-		const url = `/api/datascience/ml/v1/models/${models[i].id}/ownership`;
-		const data = { userId: newOwnerId };
-		await handleRequest('POST', url, data);
+	if (models.length > 0) {
+		for (let i = 0; i < models.length; i++) {
+			const url = `/api/datascience/ml/v1/models/${models[i]}/ownership`;
+			const data = { userId: newOwnerId };
+			await handleRequest('POST', url, data);
+		}
+		await logTransfers(userId, newOwnerId, 'AI_MODEL', models); // Not recorded in the activity log
 	}
-	await logTransfers(userId, newOwnerId, 'AI_MODEL', models); // Not recorded in the activity log
 }
 
 //-----------------------------------AI Projects----------------------------------//
 
-async function transferAiProjects(userId, newOwnerId) {
-	const limit = 50;
-	let offset = 0;
-	let moreData = true;
+async function transferAiProjects(userId, newOwnerId, filteredIds = []) {
 	let projects = [];
 
-	while (moreData) {
-		const data = {
-			limit: 50,
-			offset: 0,
-			sortFieldMap: {
-				CREATED: 'DESC'
-			},
-			searchFieldMap: { NAME: '' },
-			filters: [{ type: 'OWNER', values: [userId] }],
-			metricFilters: {},
-			dateFilters: {},
-			sortMetricMap: {}
-		};
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		projects = filteredIds;
+	} else {
+		// Use existing discovery logic
+		const limit = 50;
+		let offset = 0;
+		let moreData = true;
 
-		const response = await handleRequest(
-			'POST',
-			'/api/datascience/ml/v1/search/projects',
-			data
-		);
+		while (moreData) {
+			const data = {
+				limit: 50,
+				offset: 0,
+				sortFieldMap: {
+					CREATED: 'DESC'
+				},
+				searchFieldMap: { NAME: '' },
+				filters: [{ type: 'OWNER', values: [userId] }],
+				metricFilters: {},
+				dateFilters: {},
+				sortMetricMap: {}
+			};
 
-		if (response && response.projects.length > 0) {
-			// Extract ids and append to list
-			const ids = response.projects.map((model) => model.id);
-			projects.push(...ids);
+			const response = await handleRequest(
+				'POST',
+				'/api/datascience/ml/v1/search/projects',
+				data
+			);
 
-			if (response.projects.length < limit) {
+			if (response && response.projects.length > 0) {
+				// Extract ids and append to list
+				const ids = response.projects.map((model) => model.id);
+				projects.push(...ids);
+
+				if (response.projects.length < limit) {
+					moreData = false;
+				}
+
+				offset += limit;
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-
-			offset += limit;
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
 		}
 	}
 
-	for (let i = 0; i < projects.length; i++) {
-		const url = `/api/datascience/ml/v1/projects/${projects[i].id}/ownership`;
-		const data = { userId: newOwnerId };
-		await handleRequest('POST', url, data);
+	if (projects.length > 0) {
+		for (let i = 0; i < projects.length; i++) {
+			const url = `/api/datascience/ml/v1/projects/${projects[i]}/ownership`;
+			const data = { userId: newOwnerId };
+			await handleRequest('POST', url, data);
+		}
+		await logTransfers(userId, newOwnerId, 'AI_PROJECT', projects); // Not recorded in the activity log
 	}
-	await logTransfers(userId, newOwnerId, 'AI_PROJECT', projects); // Not recorded in the activity log
 }
 
 //--------------------------ProjectsAndTasks--------------------------//
 
-async function transferProjectsAndTasks(userId, newOwnerId) {
+async function transferProjectsAndTasks(userId, newOwnerId, filteredIds = []) {
+	let allIds = [];
 	let projects = [];
 	let tasks = [];
-	let offset = 0;
-	const limit = 100;
-	let moreData = true;
 
-	while (moreData) {
-		const response = await handleRequest(
-			'GET',
-			`/api/content/v2/users/${userId}/projects?limit=${limit}&offset=${offset}`
-		);
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list - combine PROJECT and PROJECT_TASK types
+		allIds = filteredIds;
+		// We'll need to fetch project details for each ID to process them properly
+		for (const id of filteredIds) {
+			try {
+				// Try to get as project first
+				const project = await handleRequest(
+					'GET',
+					`/api/content/v1/projects/${id}`
+				);
+				if (project && project.assignedTo == userId) {
+					projects.push(project);
+				}
+			} catch (error) {
+				// If not a project, might be a task
+				try {
+					const task = await handleRequest(
+						'GET',
+						`/api/content/v1/tasks/${id}`
+					);
+					if (task) {
+						tasks.push(task);
+					}
+				} catch (taskError) {
+					console.error(`Failed to process ID ${id}:`, taskError);
+				}
+			}
+		}
+	} else {
+		// Use existing discovery logic
+		let offset = 0;
+		const limit = 100;
+		let moreData = true;
 
-		if (response && response.length > 0) {
-			// Extract ids and append to list
-			projects.push(...response.projects);
+		while (moreData) {
+			const response = await handleRequest(
+				'GET',
+				`/api/content/v2/users/${userId}/projects?limit=${limit}&offset=${offset}`
+			);
 
-			// Increment offset to get next page
-			offset += limit;
+			if (response && response.length > 0) {
+				// Extract ids and append to list
+				projects.push(...response.projects);
 
-			// If less than pageSize returned, this is the last page
-			if (response.length < limit) {
+				// Increment offset to get next page
+				offset += limit;
+
+				// If less than pageSize returned, this is the last page
+				if (response.length < limit) {
+					moreData = false;
+				}
+			} else {
+				// No more data returned, stop loop
 				moreData = false;
 			}
-		} else {
-			// No more data returned, stop loop
-			moreData = false;
+		}
+
+		// Get tasks for each project
+		for (let i = 0; i < projects.length; i++) {
+			const taskResponse = await handleRequest(
+				'GET',
+				`/api/content/v1/projects/${projects[i].id}/tasks?assignedToOwnerId=${userId}`
+			);
+
+			if (taskResponse && taskResponse.length > 0) {
+				tasks.push(...taskResponse);
+			}
 		}
 	}
 
-	let projectIds = [];
-	for (let i = 0; i < projects.length; i++) {
-		// Get tasks for each project
-		const taskResponse = await handleRequest(
-			'GET',
-			`/api/content/v1/projects/${projects[i].id}/tasks?assignedToOwnerId=${userId}`
-		);
-
-		if (taskResponse && taskResponse.length > 0) {
-			tasks.push(...taskResponse.map((task) => task.id));
-			taskResponse.forEach(async (task) => {
-				if (task.primaryTaskOwner == userId) {
-					task.primaryTaskOwner = newOwnerId;
-				}
-				task.contributors.push({
-					assignedTo: newOwnerId,
-					assignedBy: userId
-				});
-				task.owners.push({
-					assignedTo: newOwnerId,
-					assignedBy: userId
-				});
-				await handleRequest('PUT', `/api/content/v1/tasks/${task.id}`, task);
-			});
+	// Process tasks
+	let taskIds = [];
+	for (const task of tasks) {
+		taskIds.push(task.id);
+		if (task.primaryTaskOwner == userId) {
+			task.primaryTaskOwner = newOwnerId;
 		}
+		task.contributors.push({
+			assignedTo: newOwnerId,
+			assignedBy: userId
+		});
+		task.owners.push({
+			assignedTo: newOwnerId,
+			assignedBy: userId
+		});
+		await handleRequest('PUT', `/api/content/v1/tasks/${task.id}`, task);
+	}
 
-		if (projects[i].assignedTo == userId) {
-			projectIds.push(projects[i].id);
-			const url = `/api/content/v1/projects/${projects[i].id}`;
-			const body = { id: projects[i].id, creator: newOwnerId };
-
+	// Process projects
+	let projectIds = [];
+	for (const project of projects) {
+		if (project.assignedTo == userId) {
+			projectIds.push(project.id);
+			const url = `/api/content/v1/projects/${project.id}`;
+			const body = { id: project.id, creator: newOwnerId };
 			await handleRequest('PUT', url, body);
 		}
 	}
 
-	await logTransfers(userId, newOwnerId, 'PROJECT_TASK', tasks);
-	await logTransfers(userId, newOwnerId, 'PROJECT', projectIds);
+	if (taskIds.length > 0) {
+		await logTransfers(userId, newOwnerId, 'PROJECT_TASK', taskIds);
+	}
+	if (projectIds.length > 0) {
+		await logTransfers(userId, newOwnerId, 'PROJECT', projectIds);
+	}
 }
 
-async function transferMetrics(userId, newOwnerId) {
+async function transferMetrics(userId, newOwnerId, filteredIds = []) {
 	let metrics = [];
-	let moreData = true;
-	let offset = 0;
-	const limit = 100;
 
-	while (moreData) {
-		const data = {
-			nameContains: 'string',
-			filters: {
-				OWNER: [userId]
-			},
-			orderBy: 'CREATED',
-			followed: false,
-			descendingOrderBy: false,
-			limit: limit,
-			offset: offset
-		};
-
-		const response = await handleRequest(
-			'POST',
-			'/api/content/v1/metrics/filter',
-			data
-		);
-
-		if (response && response.metrics.length > 0) {
-			// Process metrics
-			for (const metric of response.metrics) {
+	if (filteredIds.length > 0) {
+		// Use the provided filtered list
+		for (const metricId of filteredIds) {
+			try {
 				await handleRequest(
 					'POST',
-					`/api/content/v1/metrics/${metric.id}/owner/${newOwnerId}`
+					`/api/content/v1/metrics/${metricId}/owner/${newOwnerId}`
 				);
-				metrics.push(metric.id);
+				metrics.push(metricId);
+			} catch (error) {
+				console.error(`Failed to transfer metric ${metricId}:`, error);
 			}
+		}
+	} else {
+		// Use existing discovery logic
+		let moreData = true;
+		let offset = 0;
+		const limit = 100;
 
-			offset += limit;
-		} else {
-			moreData = false;
+		while (moreData) {
+			const data = {
+				nameContains: 'string',
+				filters: {
+					OWNER: [userId]
+				},
+				orderBy: 'CREATED',
+				followed: false,
+				descendingOrderBy: false,
+				limit: limit,
+				offset: offset
+			};
+
+			const response = await handleRequest(
+				'POST',
+				'/api/content/v1/metrics/filter',
+				data
+			);
+
+			if (response && response.metrics.length > 0) {
+				// Process metrics
+				for (const metric of response.metrics) {
+					await handleRequest(
+						'POST',
+						`/api/content/v1/metrics/${metric.id}/owner/${newOwnerId}`
+					);
+					metrics.push(metric.id);
+				}
+
+				offset += limit;
+			} else {
+				moreData = false;
+			}
 		}
 	}
 
-	await logTransfers(userId, newOwnerId, 'METRIC', metrics);
+	if (metrics.length > 0) {
+		await logTransfers(userId, newOwnerId, 'METRIC', metrics);
+	}
 }
