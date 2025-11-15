@@ -1,0 +1,4372 @@
+{
+  "version": 2,
+  "designElements": [
+    {
+      "id": "rootNode",
+      "position": {
+        "x": 610,
+        "y": 0
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Start MajorDomo | User Offboarding",
+        "description": "",
+        "type": "Start",
+        "_designNode": "rootNode",
+        "isFormStart": false,
+        "formId": null,
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "newOwnerIds",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "eeucAtXyhsaukdx",
+            "isList": true,
+            "mappedTo": "pNUHyNgVLYkagMW",
+            "paramName": "newOwnerIds",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "sendEmails",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "hsdPtDIuzxUjzuP",
+            "isList": false,
+            "mappedTo": "DtaiyzImXfpJYqm",
+            "paramName": "sendEmails",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "userIds",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "DtWcdIUDXftvzml",
+            "isList": true,
+            "mappedTo": "CyXpbZKfoFawciT",
+            "paramName": "userIds",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ]
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 0,
+      "type": "rootNode"
+    },
+    {
+      "id": "rBIDixBWmCbhVlJ",
+      "position": {
+        "x": 610,
+        "y": 220
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Delete User Sessions",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "userId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "gttsLZKlsKbXUgs",
+            "isList": false,
+            "mappedTo": "iEpYJABHzIWrSKb",
+            "paramName": "userId",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.44",
+          "settings": {},
+          "packageId": "d5c46aaa-963f-4e01-a84a-f89ccea6465a",
+          "functionName": "deleteUserSessions"
+        },
+        "selectedTaskTitle": "Delete User Sessions",
+        "selectedTaskDescription": ""
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 1,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "GrboWgGTEzuiLYP",
+      "position": {
+        "x": 610,
+        "y": 550
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Get User Person",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "person",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "XuyxiJdEmTrUcWC",
+            "isList": false,
+            "mappedTo": "klJpzpEKZZhLSHk",
+            "paramName": "person",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "created",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.zylBrQcQomDVNaH",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.KhfsOdvBSRYgpZT",
+                "paramName": "created",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "displayName",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.AZnDfncTuwhYcwp",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+                "paramName": "displayName",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "emailAddress",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.yYfTMufYWvrCotz",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.VnNvDfinRSCjOke",
+                "paramName": "emailAddress",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "id",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.ZXgzwrFQywIyLFW",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.EiTOoxAKiKVMYKI",
+                "paramName": "id",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "boolean",
+                "displayName": "isActive",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.iTdvKhkOMLyDxQH",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.twHYgroNpjMmWtD",
+                "paramName": "isActive",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "boolean",
+                "displayName": "isSystemUser",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.XZOnYqqGzpEiSCY",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.OVFhnfNCCbMHXfM",
+                "paramName": "isSystemUser",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "modified",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.cQZzdwDVVLOxpvZ",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.CIrBCJOMQBXiRJN",
+                "paramName": "modified",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "roleId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.fSASrxkXYuSFSmU",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.crypaCjuQlgsVWy",
+                "paramName": "roleId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "userName",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "JISVjBbBnINUJCx.tyfhenWhgpOFYlo",
+                "isList": false,
+                "mappedTo": "iduYPgPemUlpPJU.VquwXpbWDyyJsPY",
+                "paramName": "userName",
+                "required": false,
+                "value": null,
+                "visible": true
+              }
+            ],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "object",
+            "displayName": "user",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "JISVjBbBnINUJCx",
+            "isList": false,
+            "mappedTo": "iduYPgPemUlpPJU",
+            "paramName": "user",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.14",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "getPerson"
+        },
+        "selectedTaskTitle": "Get Person",
+        "selectedTaskDescription": "Returns a full user object from a person object"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 2,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "DhyewyGFnVcvQSK",
+      "position": {
+        "x": 610,
+        "y": 1210
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Transfer Content",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "newOwnerId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "qiuEVUfREnNnzHb",
+            "isList": false,
+            "mappedTo": "qUBuYSFeMGeSgHP",
+            "paramName": "newOwnerId",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "userId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "NQISYBPFOHJNSjN",
+            "isList": false,
+            "mappedTo": "iEpYJABHzIWrSKb",
+            "paramName": "userId",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.44",
+          "settings": {},
+          "packageId": "d5c46aaa-963f-4e01-a84a-f89ccea6465a",
+          "functionName": "transferContent"
+        },
+        "selectedTaskTitle": "Transfer Content",
+        "selectedTaskDescription": ""
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 3,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "JzDCEFwHbmVhAKb",
+      "position": {
+        "x": 610,
+        "y": 1330
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Delete User",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "userId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "evfdniluhWyRweM",
+            "isList": false,
+            "mappedTo": "iEpYJABHzIWrSKb",
+            "paramName": "userId",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.44",
+          "settings": {},
+          "packageId": "d5c46aaa-963f-4e01-a84a-f89ccea6465a",
+          "functionName": "deleteUser"
+        },
+        "selectedTaskTitle": "Delete User",
+        "selectedTaskDescription": ""
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 4,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "GXUfaErlibZMvlw",
+      "position": {
+        "x": 1510,
+        "y": 770
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "End",
+        "description": "",
+        "_designNode": "endNode",
+        "terminating": false
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 5,
+      "type": "endNode"
+    },
+    {
+      "id": "qzacXEkapRNSdjt",
+      "position": {
+        "x": 610,
+        "y": 110
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Get User ID from List",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "index",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "kJSeaPNiRVyQuma",
+            "isList": false,
+            "mappedTo": "FtumcsZgUGGCeXi",
+            "paramName": "index",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "list",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "gbwcuIglldiMOMN",
+            "isList": true,
+            "mappedTo": "CyXpbZKfoFawciT",
+            "paramName": "list",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "number",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "akdmXqHqnQqNUPw",
+            "isList": false,
+            "mappedTo": "iEpYJABHzIWrSKb",
+            "paramName": "number",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.8",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "getNumberFromList"
+        },
+        "selectedTaskTitle": "Get Number from List",
+        "selectedTaskDescription": "Returns a number (integer) at a specified index from a list (array) of numbers (integers)"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 6,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "BEnCvJhqrXFpYEV",
+      "position": {
+        "x": 610,
+        "y": 330
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Get New Owner ID from List",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "index",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "kiaVSejdsDJfigc",
+            "isList": false,
+            "mappedTo": "FtumcsZgUGGCeXi",
+            "paramName": "index",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "list",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "krrVWOAYHkNINeM",
+            "isList": true,
+            "mappedTo": "pNUHyNgVLYkagMW",
+            "paramName": "list",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "number",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "DAWVVESHXfFdtqX",
+            "isList": false,
+            "mappedTo": "qUBuYSFeMGeSgHP",
+            "paramName": "number",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.8",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "getNumberFromList"
+        },
+        "selectedTaskTitle": "Get Number from List",
+        "selectedTaskDescription": "Returns a number (integer) at a specified index from a list (array) of numbers (integers)"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 7,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "JIyLTNAZAtSMOyQ",
+      "position": {
+        "x": 1210,
+        "y": 110
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "More Rows to Process",
+        "description": "",
+        "_designNode": "conditionalGatewayNode",
+        "inclusive": false
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 8,
+      "type": "conditionalGatewayNode"
+    },
+    {
+      "id": "SWQjxxDeaEMJDCx",
+      "position": {
+        "x": 1210,
+        "y": 990
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Increment Iterator",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "number1",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "pfkRFhnUxsQNUqr",
+            "isList": false,
+            "mappedTo": "FtumcsZgUGGCeXi",
+            "paramName": "number1",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "number2",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "JrDEwjXeWVsRhuw",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "number2",
+            "required": true,
+            "value": 1,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "result",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "NyKhALcfKSTddnm",
+            "isList": false,
+            "mappedTo": "FtumcsZgUGGCeXi",
+            "paramName": "result",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.0",
+          "settings": {},
+          "packageId": "cf1354ee-38db-4605-b9b6-0dc26af77ae5",
+          "functionName": "AdditionNumeric"
+        },
+        "selectedTaskTitle": "AdditionNumeric",
+        "selectedTaskDescription": ""
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 9,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "edge-JIyLTNAZAtSMOyQ-qzacXEkapRNSdjt-AonfuKAyRkFJYEw",
+      "source": "JIyLTNAZAtSMOyQ",
+      "target": "qzacXEkapRNSdjt",
+      "data": {
+        "sourcePosition": "left",
+        "targetPosition": "right",
+        "path": [
+          [
+            1210,
+            140
+          ],
+          [
+            1110,
+            140
+          ],
+          [
+            910,
+            140
+          ],
+          [
+            811,
+            140
+          ]
+        ],
+        "entryPosition": "right",
+        "exitPosition": "left",
+        "description": "",
+        "title": "Yes",
+        "type": "Advanced",
+        "nodeId": "YENbVjMUdyDSkVJ",
+        "position": {
+          "x": 910,
+          "y": 120
+        },
+        "dimensions": {
+          "width": 200,
+          "height": 40
+        },
+        "splitIndex": 2,
+        "_designNode": "condition",
+        "advancedRule": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "text": "=count(",
+                "bold": false,
+                "italic": false,
+                "underlined": false,
+                "sql": false
+              },
+              {
+                "type": "variable",
+                "children": [
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ],
+                "dataType": "number",
+                "id": "CyXpbZKfoFawciT",
+                "name": "userIds",
+                "isList": false
+              },
+              {
+                "text": ")>",
+                "bold": false,
+                "italic": false,
+                "underlined": false,
+                "sql": false
+              },
+              {
+                "type": "variable",
+                "children": [
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ],
+                "dataType": "number",
+                "id": "FtumcsZgUGGCeXi",
+                "name": "iterator",
+                "isList": false
+              },
+              {
+                "text": "",
+                "bold": false,
+                "italic": false,
+                "underlined": false,
+                "sql": false
+              }
+            ]
+          }
+        ]
+      },
+      "style": {},
+      "index": 10,
+      "arrowHeadType": "arrow",
+      "type": "conditionEdge"
+    },
+    {
+      "id": "brwIlRpMPqANtTi",
+      "position": {
+        "x": 1510,
+        "y": 1220
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Send Confirmation to Service-Now",
+        "description": "Send confirmation email to Employee Service Center (Service-Now)",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "attachment",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "gBPPLTwOoMOjfWk",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "attachment",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "attachments",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "zLnManWPHXgOagx",
+            "isList": true,
+            "mappedTo": null,
+            "paramName": "attachments",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "body",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "sUHXoltSgOmMAId",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "body",
+            "required": false,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "Offboarding for ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+                    "name": "userObject.displayName",
+                    "isList": false
+                  },
+                  {
+                    "text": " has been completed in domo.domo",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "group",
+            "displayName": "groupRecipients",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "lBMnkZMLjxzLosy",
+            "isList": true,
+            "mappedTo": null,
+            "paramName": "groupRecipients",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "includeReplyAll",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "eipJJxnoNhmqCwr",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "includeReplyAll",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "personRecipients",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "PLNyqLCHDfTWbvx",
+            "isList": true,
+            "mappedTo": null,
+            "paramName": "personRecipients",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "recipientEmails",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "QxyoKBBQhrFLnEq",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "recipientEmails",
+            "required": false,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "domo@service-now.com",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "subject",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "vvbZYVMaBlmQiEW",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "subject",
+            "required": false,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "Employee Exit - ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+                    "name": "userObject.displayName",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "isSent",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "BhNpPDSpYxkhEQO",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "isSent",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "2.1.9",
+          "settings": {},
+          "packageId": "03ba6971-98d0-4654-9bfd-aa897816df33",
+          "functionName": "sendEmail"
+        },
+        "selectedTaskTitle": "Send Email",
+        "selectedTaskDescription": "Send a stylized email to an email address, list of People, or a list of Groups with the option to include attachments"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 11,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "IqVCGVTaUCruVrq",
+      "position": {
+        "x": 610,
+        "y": 660
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Cast newOwnerId as Person",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "userId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "wngtMyuNetKTevB",
+            "isList": false,
+            "mappedTo": "qUBuYSFeMGeSgHP",
+            "paramName": "userId",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "person",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "TzHnBCsdOsNODdo",
+            "isList": false,
+            "mappedTo": "tOfGzTleFmNGXCu",
+            "paramName": "person",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.16",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "castUserIdNumToPerson"
+        },
+        "selectedTaskTitle": "Cast User Id Num To Person",
+        "selectedTaskDescription": ""
+      },
+      "style": {
+        "zIndex": 4,
+        "outline": "none"
+      },
+      "index": 12,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "cZJBMtGxclrQUSW",
+      "position": {
+        "x": 1510,
+        "y": 1110
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Send Email to New Owner",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "attachment",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "iPRnDjGmFdIOrIT",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "attachment",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "attachments",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "wPptVVNwIIWdlCE",
+            "isList": true,
+            "mappedTo": null,
+            "paramName": "attachments",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "body",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "eNtJLrcyBYXwVxp",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "body",
+            "required": true,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+                    "name": "userObject.displayName",
+                    "isList": false
+                  },
+                  {
+                    "text": " was deleted from domo.domo as they are no longer employed by Domo. All their assets (e.g., Cards, DataSets, DataFlows, etc.) in domo.domo have been transferred to you. You can review what was transferred here: https://domo.domo.com/kpis/details/1212529677. We recommend you spend time deleting any assets that are no longer needed and transferring assets to more appropriate users if applicable. ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "includeReplyAll",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "sKASXFssErUGyCc",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "includeReplyAll",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "person",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "tLoGFWyLmfuitts",
+            "isList": false,
+            "mappedTo": "tOfGzTleFmNGXCu",
+            "paramName": "person",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "subject",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "gwEHlVstiWSWeiN",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "subject",
+            "required": false,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "Offboarding in domo.domo Complete - ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+                    "name": "userObject.displayName",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "isSent",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "cSqaVahdPmWioog",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "isSent",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "2.1.9",
+          "settings": {},
+          "packageId": "03ba6971-98d0-4654-9bfd-aa897816df33",
+          "functionName": "sendEmailToPerson"
+        },
+        "selectedTaskTitle": "Send Email To Person",
+        "selectedTaskDescription": "Send a stylized email to a person entity"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 13,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "oiEXWtPxxYKwjzH",
+      "position": {
+        "x": 610,
+        "y": 440
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Cast userId as Person",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "userId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "SgcEaEbhnIinXpX",
+            "isList": false,
+            "mappedTo": "iEpYJABHzIWrSKb",
+            "paramName": "userId",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "person",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "qWdBEpCyrMZszxF",
+            "isList": false,
+            "mappedTo": "klJpzpEKZZhLSHk",
+            "paramName": "person",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.16",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "castUserIdNumToPerson"
+        },
+        "selectedTaskTitle": "Cast User Id Num To Person",
+        "selectedTaskDescription": ""
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 14,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "LPKEbMREEmBfTlD",
+      "position": {
+        "x": 1210,
+        "y": 1330
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Send Emails?",
+        "description": "",
+        "_designNode": "conditionalGatewayNode",
+        "inclusive": false
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 15,
+      "type": "conditionalGatewayNode"
+    },
+    {
+      "id": "edge-LPKEbMREEmBfTlD-brwIlRpMPqANtTi-sOyrdPXBtFgrTMd",
+      "source": "LPKEbMREEmBfTlD",
+      "target": "brwIlRpMPqANtTi",
+      "data": {
+        "sourcePosition": "right",
+        "targetPosition": "bottom",
+        "path": [
+          [
+            1410,
+            1360
+          ],
+          [
+            1510,
+            1360
+          ],
+          [
+            1610,
+            1340
+          ],
+          [
+            1610,
+            1281
+          ]
+        ],
+        "entryPosition": "left",
+        "exitPosition": "top",
+        "description": "",
+        "title": "Yes",
+        "type": "Basic",
+        "nodeId": "TZLogMyXoTLhaKX",
+        "position": {
+          "x": 1510,
+          "y": 1340
+        },
+        "dimensions": {
+          "width": 200,
+          "height": 40
+        },
+        "splitIndex": 2,
+        "_designNode": "condition",
+        "rules": [
+          [
+            {
+              "variable": {
+                "id": "DtaiyzImXfpJYqm",
+                "paramName": "sendEmails",
+                "dataType": "boolean",
+                "isList": false,
+                "children": [],
+                "showChildren": false,
+                "entitySubType": null,
+                "value": null,
+                "isOutput": false
+              },
+              "operator": "Equals",
+              "valueType": "Custom",
+              "value": true
+            }
+          ]
+        ]
+      },
+      "style": {},
+      "index": 16,
+      "arrowHeadType": "arrow",
+      "type": "conditionEdge"
+    },
+    {
+      "id": "KdGQNvKSRUQbTaO",
+      "position": {
+        "x": 610,
+        "y": 880
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Wait for Approval",
+        "description": "",
+        "_designNode": "userTaskNode",
+        "configType": "form",
+        "selectedUserTaskTitle": "User Offboarding Form",
+        "selectedUserTaskDescription": "",
+        "input": [
+          {
+            "acceptsInput": true,
+            "children": [],
+            "customMappingType": "form",
+            "dataType": "boolean",
+            "datasetMapping": null,
+            "displayName": "approved",
+            "entitySubType": null,
+            "fieldOptionsMappedTo": null,
+            "fieldOptionsValue": null,
+            "flag": "input",
+            "formFieldId": "0e165ae0-887b-491d-b6a1-966ebd326d14",
+            "formFieldType": "SINGLE_CHOICE",
+            "id": "AlTPHzNYPCOxYtK",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "approved",
+            "required": true,
+            "value": true,
+            "visible": true,
+            "configType": "form",
+            "useExternalValues": false
+          },
+          {
+            "acceptsInput": true,
+            "children": [],
+            "customMappingType": "form",
+            "dataType": "text",
+            "datasetMapping": null,
+            "displayName": "User_Information",
+            "entitySubType": null,
+            "fieldOptionsMappedTo": null,
+            "fieldOptionsValue": null,
+            "flag": "input",
+            "formFieldId": "ad11730c-8a3d-4270-a009-0132440be10c",
+            "formFieldType": "PARAGRAPH",
+            "id": "xMJEOLJJMbEJvvL",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "User_Information",
+            "required": false,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "User ID: ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "number",
+                    "id": "iEpYJABHzIWrSKb",
+                    "name": "userId",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "User Name: ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+                    "name": "userObject.displayName",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "New Owner ID: ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "number",
+                    "id": "qUBuYSFeMGeSgHP",
+                    "name": "newOwnerId",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "New Owner Name: ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "jNWqirXBJJSaLQH.nKwAQPZlloqIMnX",
+                    "name": "newOwnerObject.displayName",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true,
+            "configType": "form",
+            "useExternalValues": false
+          }
+        ],
+        "output": [
+          {
+            "acceptsInput": true,
+            "children": [],
+            "customMappingType": "form",
+            "dataType": "boolean",
+            "datasetMapping": null,
+            "displayName": "approved",
+            "entitySubType": null,
+            "fieldOptionsMappedTo": null,
+            "fieldOptionsValue": null,
+            "flag": "output",
+            "formFieldId": "0e165ae0-887b-491d-b6a1-966ebd326d14",
+            "formFieldType": "SINGLE_CHOICE",
+            "id": "mProyZeEwiYCaix",
+            "isList": false,
+            "mappedTo": "QWtazAjwdCfUJRU",
+            "paramName": "approved",
+            "required": true,
+            "value": null,
+            "visible": true,
+            "configType": "form",
+            "useExternalValues": false
+          }
+        ],
+        "fieldOptions": [],
+        "formId": "8dc7c77d-d471-4f1a-a404-92e2feaa6ad4",
+        "selectedQueue": "3e84763b-a58e-44a7-acce-1d8bb7efda1e",
+        "assignedTo": {
+          "children": [],
+          "configType": null,
+          "customMappingType": null,
+          "dataType": "person",
+          "displayName": "Assigned To",
+          "entitySubType": null,
+          "flag": "input",
+          "id": "AqfWlgDjItSEkyd",
+          "isList": false,
+          "mappedTo": null,
+          "paramName": "DOMO_ASSIGNED_TO_",
+          "required": true,
+          "value": "1813188617",
+          "visible": true
+        }
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 17,
+      "type": "userTaskNode"
+    },
+    {
+      "id": "oFwiLhDuJYeneeU",
+      "position": {
+        "x": 610,
+        "y": 990
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Approved",
+        "description": "",
+        "_designNode": "conditionalGatewayNode",
+        "inclusive": false
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 18,
+      "type": "conditionalGatewayNode"
+    },
+    {
+      "id": "jbqghOHqubcChTJ",
+      "position": {
+        "x": 610,
+        "y": 770
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Get New Owner Person",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "person",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "bJNZKtSDChBoZex",
+            "isList": false,
+            "mappedTo": "tOfGzTleFmNGXCu",
+            "paramName": "person",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "created",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.QiZSSXKBjlHazgT",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.xqcattJFmjSpsbL",
+                "paramName": "created",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "displayName",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.ZmRkNNGFMhUVxFk",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.nKwAQPZlloqIMnX",
+                "paramName": "displayName",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "emailAddress",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.wLrdbBMKgGXIKkH",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.lDbjANGhtWfgYBH",
+                "paramName": "emailAddress",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "id",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.DQOqmwqtbEEXjxr",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.MDaQkQimQzuOWJI",
+                "paramName": "id",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "boolean",
+                "displayName": "isActive",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.wwrviAWcVgtOXnE",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.qqdNateXFCcNhIl",
+                "paramName": "isActive",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "boolean",
+                "displayName": "isSystemUser",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.HskCjveWIQYsBZh",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.YacEgKFnzpuorRD",
+                "paramName": "isSystemUser",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "modified",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.EYzjJLFajFPDiYQ",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.lSDprBSVfJaSvMO",
+                "paramName": "modified",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "roleId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.oKOOwDavTBeXxHM",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.ZLNIHepkopDPfHO",
+                "paramName": "roleId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "userName",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "hquajntfQteLkEO.oictuAJDtPQZjvc",
+                "isList": false,
+                "mappedTo": "jNWqirXBJJSaLQH.WXTttUEmtaWYUll",
+                "paramName": "userName",
+                "required": false,
+                "value": null,
+                "visible": true
+              }
+            ],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "object",
+            "displayName": "user",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "hquajntfQteLkEO",
+            "isList": false,
+            "mappedTo": "jNWqirXBJJSaLQH",
+            "paramName": "user",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.14",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "getPerson"
+        },
+        "selectedTaskTitle": "Get Person",
+        "selectedTaskDescription": "Returns a full user object from a person object"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 19,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "edge-oFwiLhDuJYeneeU-DhyewyGFnVcvQSK-OqKjLKrfjAfIaVK",
+      "source": "oFwiLhDuJYeneeU",
+      "target": "DhyewyGFnVcvQSK",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            1050
+          ],
+          [
+            710,
+            1110
+          ],
+          [
+            710,
+            1150
+          ],
+          [
+            710,
+            1209
+          ]
+        ],
+        "entryPosition": "top",
+        "exitPosition": "bottom",
+        "description": "",
+        "title": "Yes",
+        "type": "Basic",
+        "nodeId": "klImCxQMgFbJTLh",
+        "position": {
+          "x": 610,
+          "y": 1110
+        },
+        "dimensions": {
+          "width": 200,
+          "height": 40
+        },
+        "splitIndex": 2,
+        "_designNode": "condition",
+        "rules": [
+          [
+            {
+              "variable": {
+                "id": "QWtazAjwdCfUJRU",
+                "paramName": "approved",
+                "dataType": "boolean",
+                "isList": false,
+                "children": [],
+                "showChildren": false,
+                "entitySubType": null,
+                "value": null,
+                "isOutput": false
+              },
+              "operator": "Equals",
+              "valueType": "Custom",
+              "value": true
+            }
+          ]
+        ]
+      },
+      "style": {},
+      "index": 20,
+      "arrowHeadType": "arrow",
+      "type": "conditionEdge"
+    },
+    {
+      "id": "UjLfnnjACdsfByt",
+      "position": {
+        "x": 1510,
+        "y": 220
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Get Workflow Instance IDs",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [],
+        "output": [
+          {
+            "children": [
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "instanceId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "lhhkDxKPzCATuqU.sCCDKwJhCYDbtjQ",
+                "isList": false,
+                "mappedTo": "rCHfCIwzDUBivjc.RrteeTzQcWYPcOV",
+                "paramName": "instanceId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "modelId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "lhhkDxKPzCATuqU.rLkXhkzEbingPWY",
+                "isList": false,
+                "mappedTo": "rCHfCIwzDUBivjc.uriEziQUJqFcgnZ",
+                "paramName": "modelId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "version",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "lhhkDxKPzCATuqU.MQUPmaSAuqMgbES",
+                "isList": false,
+                "mappedTo": "rCHfCIwzDUBivjc.YYeJBSLWvcOgjkI",
+                "paramName": "version",
+                "required": false,
+                "value": null,
+                "visible": true
+              }
+            ],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "object",
+            "displayName": "entityDetails",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "lhhkDxKPzCATuqU",
+            "isList": false,
+            "mappedTo": "rCHfCIwzDUBivjc",
+            "paramName": "entityDetails",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.1",
+          "settings": {},
+          "packageId": "8eb51a4b-00cf-40c3-9ec0-484aa1a742fa",
+          "functionName": "getExecutionEntityDetails"
+        },
+        "selectedTaskTitle": "Get Execution Entity Details",
+        "selectedTaskDescription": "Get the Workflow details that executed this Code Engine function"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 21,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "avZmdaboWIKVBIx",
+      "position": {
+        "x": 1510,
+        "y": 330
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Get Workflow Execution",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "instanceId",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "uRjhWtJsUoPRamM",
+            "isList": false,
+            "mappedTo": "rCHfCIwzDUBivjc.RrteeTzQcWYPcOV",
+            "paramName": "instanceId",
+            "required": true,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "dateTime",
+                "displayName": "createdAt",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.SGHQfxeSFYxFzpk",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.NXZzkqgPpzoRulG",
+                "paramName": "createdAt",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "deploymentId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.hUDyVSmNgSDHQKp",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.oXzPxdnxsDSLgGZ",
+                "paramName": "deploymentId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "eventId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.CzwfwOtVBpvXLnr",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.xxlLodrrwbdAaPV",
+                "paramName": "eventId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "dateTime",
+                "displayName": "finishedAt",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.WoczhUyBMImdjxa",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.fiTMCLIhzpSyJMM",
+                "paramName": "finishedAt",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "id",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.EXMinXbeoOwleXd",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.HpgxmZjZYzzuoYt",
+                "paramName": "id",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "modelId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.gOpPjLIWtfjzAxh",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.xcBBpoDExNGFIdU",
+                "paramName": "modelId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "modelName",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.vzjtQoZyhFrRzLS",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.ROvCqhUxRMsJvUj",
+                "paramName": "modelName",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "modelVersion",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.OPVYqIUWnnNPYKy",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.llHZvwGdCqAQMIt",
+                "paramName": "modelVersion",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "number",
+                "displayName": "processKey",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.seFVLyoKVmaMIdd",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.QiYVAiLfYmyYKHQ",
+                "paramName": "processKey",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "dateTime",
+                "displayName": "startedAt",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.gNubarHAeXlvsyS",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.pTMfNJEPpYXTUEI",
+                "paramName": "startedAt",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "startedBy",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.uWAsypElvjpqEDd",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.nnaEWqEQpRIBGAu",
+                "paramName": "startedBy",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "status",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.zZTrnwmQIMxIUhc",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.SEtrBUbOYxUkLEn",
+                "paramName": "status",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "dateTime",
+                "displayName": "triggerDeletedAt",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.mpfYMbKlkXJgtgF",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.LXcVEzhfsftgqrs",
+                "paramName": "triggerDeletedAt",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "triggerId",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.oXNxFpWquOzSbGJ",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.KbtlDikAYpHgZAL",
+                "paramName": "triggerId",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "triggerName",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.LSEWBuMLWQNfiIb",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.ckaezNUqHpYfzlW",
+                "paramName": "triggerName",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "triggerType",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.oSklQYVoxqyvhUj",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.PSNhJvbsemuPpOS",
+                "paramName": "triggerType",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "dateTime",
+                "displayName": "updatedAt",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.EbnwDSoUSCmDdCx",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.jdbMFAdcbYtcaph",
+                "paramName": "updatedAt",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "updatedBy",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.PjpvJQxzokxBuHQ",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.hdItyUGAuTAXYjb",
+                "paramName": "updatedBy",
+                "required": false,
+                "value": null,
+                "visible": true
+              },
+              {
+                "children": [],
+                "configType": null,
+                "customMappingType": null,
+                "dataType": "text",
+                "displayName": "workflowCluster",
+                "entitySubType": null,
+                "flag": "output",
+                "id": "BEwATJvUkgLWMTU.AKumMPTfXhbuQqY",
+                "isList": false,
+                "mappedTo": "TUkbiudEFybadhF.oWtTpkfQMRHiBkf",
+                "paramName": "workflowCluster",
+                "required": false,
+                "value": null,
+                "visible": true
+              }
+            ],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "object",
+            "displayName": "result",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "BEwATJvUkgLWMTU",
+            "isList": false,
+            "mappedTo": "TUkbiudEFybadhF",
+            "paramName": "result",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.1",
+          "settings": {},
+          "packageId": "8eb51a4b-00cf-40c3-9ec0-484aa1a742fa",
+          "functionName": "getExecutionMetadataById"
+        },
+        "selectedTaskTitle": "Get Execution Metadata By Id",
+        "selectedTaskDescription": "Get the status of your execution, along with other metadata related to the workflow execution instance."
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 22,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "edge-JIyLTNAZAtSMOyQ-UjLfnnjACdsfByt-CcNxmgviuFCacAJ",
+      "source": "JIyLTNAZAtSMOyQ",
+      "target": "UjLfnnjACdsfByt",
+      "data": {
+        "sourcePosition": "right",
+        "targetPosition": "top",
+        "path": [
+          [
+            1410,
+            140
+          ],
+          [
+            1510,
+            140
+          ],
+          [
+            1610,
+            160
+          ],
+          [
+            1610,
+            219
+          ]
+        ],
+        "entryPosition": "left",
+        "exitPosition": "bottom",
+        "description": "",
+        "title": "No",
+        "type": "Default",
+        "nodeId": "pDQuMrpmWVkqLtD",
+        "position": {
+          "x": 1510,
+          "y": 120
+        },
+        "dimensions": {
+          "width": 200,
+          "height": 40
+        },
+        "splitIndex": 2,
+        "_designNode": "condition"
+      },
+      "style": {},
+      "index": 23,
+      "arrowHeadType": "arrow",
+      "type": "conditionEdge"
+    },
+    {
+      "id": "edge-LPKEbMREEmBfTlD-SWQjxxDeaEMJDCx-cdhbPFCljiwzWzk",
+      "source": "LPKEbMREEmBfTlD",
+      "target": "SWQjxxDeaEMJDCx",
+      "data": {
+        "sourcePosition": "top",
+        "targetPosition": "bottom",
+        "path": [
+          [
+            1310,
+            1330
+          ],
+          [
+            1310,
+            1270
+          ],
+          [
+            1310,
+            1230
+          ],
+          [
+            1310,
+            1051
+          ]
+        ],
+        "entryPosition": "bottom",
+        "exitPosition": "top",
+        "description": "",
+        "title": "No",
+        "type": "Default",
+        "nodeId": "zqOnZnFjLBbPorC",
+        "position": {
+          "x": 1210,
+          "y": 1230
+        },
+        "dimensions": {
+          "width": 200,
+          "height": 40
+        },
+        "splitIndex": 2,
+        "_designNode": "condition"
+      },
+      "style": {},
+      "index": 24,
+      "arrowHeadType": "arrow",
+      "type": "conditionEdge"
+    },
+    {
+      "id": "edge-oFwiLhDuJYeneeU-SWQjxxDeaEMJDCx-mrbFcVkzsAUbstr",
+      "source": "oFwiLhDuJYeneeU",
+      "target": "SWQjxxDeaEMJDCx",
+      "data": {
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "path": [
+          [
+            810,
+            1020
+          ],
+          [
+            910,
+            1020
+          ],
+          [
+            1110,
+            1020
+          ],
+          [
+            1209,
+            1020
+          ]
+        ],
+        "entryPosition": "left",
+        "exitPosition": "right",
+        "description": "",
+        "title": "No",
+        "type": "Default",
+        "nodeId": "GEorKgVAkfQXRXQ",
+        "position": {
+          "x": 910,
+          "y": 1000
+        },
+        "dimensions": {
+          "width": 200,
+          "height": 40
+        },
+        "splitIndex": 2,
+        "_designNode": "condition"
+      },
+      "style": {},
+      "index": 25,
+      "arrowHeadType": "arrow",
+      "type": "conditionEdge"
+    },
+    {
+      "id": "HaOdPSOapPJyoeF",
+      "position": {
+        "x": 1510,
+        "y": 660
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Send Email to Bryce",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "attachment",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "wTRicXvlcoKBvGt",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "attachment",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "attachments",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "gxTihwhCWPMHyjT",
+            "isList": true,
+            "mappedTo": null,
+            "paramName": "attachments",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "body",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "vKpZuYotQdEZtPf",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "body",
+            "required": true,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "<a href=\"https://domo.domo.com/kpis/details/604087349?pfilters=[{\"column\":\"Previous Owner ID\",\"operand\":\"IN\",\"values\":[",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "KOZIvjLatbuAzrn",
+                    "name": "concatenatedUserIds",
+                    "isList": false
+                  },
+                  {
+                    "text": "]},{\"column\":\"New Owner ID\",\"operand\":\"IN\",\"values\":[",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "rhqGTSDFdicYREp",
+                    "name": "concatenatedNewOwnerIds",
+                    "isList": false
+                  },
+                  {
+                    "text": "]}]\" target=\"_blank\">Transfer Log</a>",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "<a href=\"https://domo.domo.com/workflows/instances/",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "rCHfCIwzDUBivjc.uriEziQUJqFcgnZ",
+                    "name": "workflow.modelId",
+                    "isList": false
+                  },
+                  {
+                    "text": "/",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "rCHfCIwzDUBivjc.YYeJBSLWvcOgjkI",
+                    "name": "workflow.version",
+                    "isList": false
+                  },
+                  {
+                    "text": "/",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "text",
+                    "id": "TUkbiudEFybadhF.HpgxmZjZYzzuoYt",
+                    "name": "execution.id",
+                    "isList": false
+                  },
+                  {
+                    "text": "\" target=\"_blank\">Workflow Execution</a>",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "includeReplyAll",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "JipYdTOIaDjJKJZ",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "includeReplyAll",
+            "required": false,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "person",
+            "displayName": "person",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "RJyLNcRBeTHimca",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "person",
+            "required": true,
+            "value": "1813188617",
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "subject",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "pxRxAolmkNnnwza",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "subject",
+            "required": false,
+            "value": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "text": "MajorDomo User Offboarding Complete - ",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  },
+                  {
+                    "type": "variable",
+                    "children": [
+                      {
+                        "text": "",
+                        "bold": false,
+                        "italic": false,
+                        "underlined": false,
+                        "sql": false
+                      }
+                    ],
+                    "dataType": "dateTime",
+                    "id": "TUkbiudEFybadhF.pTMfNJEPpYXTUEI",
+                    "name": "execution.startedAt",
+                    "isList": false
+                  },
+                  {
+                    "text": "",
+                    "bold": false,
+                    "italic": false,
+                    "underlined": false,
+                    "sql": false
+                  }
+                ]
+              }
+            ],
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "boolean",
+            "displayName": "isSent",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "HCsldxYcycoDgSv",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "isSent",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "2.1.12",
+          "settings": {},
+          "packageId": "03ba6971-98d0-4654-9bfd-aa897816df33",
+          "functionName": "sendEmailToPerson"
+        },
+        "selectedTaskTitle": "Send Email To Person",
+        "selectedTaskDescription": "Send a stylized email to a person entity"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 26,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "yViSpxlpSmGmsqu",
+      "position": {
+        "x": 1510,
+        "y": 440
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Concat User IDs",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "list",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "RvQqfTojLsYgBjR",
+            "isList": true,
+            "mappedTo": "CyXpbZKfoFawciT",
+            "paramName": "list",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "separator",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "mwxVFIOvUwnbpGl",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "separator",
+            "required": false,
+            "value": ",",
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "concatenatedList",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "zaumgrgddnpWjcJ",
+            "isList": false,
+            "mappedTo": "KOZIvjLatbuAzrn",
+            "paramName": "concatenatedList",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.17",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "concatNumList"
+        },
+        "selectedTaskTitle": "Concat Number List",
+        "selectedTaskDescription": "Concatenate an array of integers into a string separated by specified separator"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 27,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "FbYFAqrPEiEhebL",
+      "position": {
+        "x": 1510,
+        "y": 550
+      },
+      "data": {
+        "dimensions": {
+          "width": 200,
+          "height": 60
+        },
+        "title": "Concat New Owner IDs",
+        "description": "",
+        "_designNode": "serviceTaskNode",
+        "input": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "number",
+            "displayName": "list",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "aqcNpuCvoZahwrt",
+            "isList": true,
+            "mappedTo": "pNUHyNgVLYkagMW",
+            "paramName": "list",
+            "required": true,
+            "value": null,
+            "visible": true
+          },
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "separator",
+            "entitySubType": null,
+            "flag": "input",
+            "id": "jwGMsAZpAsxtaur",
+            "isList": false,
+            "mappedTo": null,
+            "paramName": "separator",
+            "required": false,
+            "value": ",",
+            "visible": true
+          }
+        ],
+        "output": [
+          {
+            "children": [],
+            "configType": null,
+            "customMappingType": null,
+            "dataType": "text",
+            "displayName": "concatenatedList",
+            "entitySubType": null,
+            "flag": "output",
+            "id": "iHoQtEjmXtxRMTV",
+            "isList": false,
+            "mappedTo": "rhqGTSDFdicYREp",
+            "paramName": "concatenatedList",
+            "required": false,
+            "value": null,
+            "visible": true
+          }
+        ],
+        "taskType": "nebulaFunction",
+        "metadata": {
+          "version": "1.0.17",
+          "settings": {},
+          "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+          "functionName": "concatNumList"
+        },
+        "selectedTaskTitle": "Concat Number List",
+        "selectedTaskDescription": "Concatenate an array of integers into a string separated by specified separator"
+      },
+      "style": {
+        "zIndex": 3,
+        "outline": "none"
+      },
+      "index": 28,
+      "type": "serviceTaskNode"
+    },
+    {
+      "id": "edge-DhyewyGFnVcvQSK-JzDCEFwHbmVhAKb-vBybsMOjOTXXbkh",
+      "source": "DhyewyGFnVcvQSK",
+      "target": "JzDCEFwHbmVhAKb",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            1270
+          ],
+          [
+            710,
+            1329
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 29,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-rootNode-qzacXEkapRNSdjt-aoCQrOdsAPJKSQC",
+      "source": "rootNode",
+      "target": "qzacXEkapRNSdjt",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            60
+          ],
+          [
+            710,
+            109
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 30,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-KdGQNvKSRUQbTaO-oFwiLhDuJYeneeU-SHUSlsmgENmlrXD",
+      "source": "KdGQNvKSRUQbTaO",
+      "target": "oFwiLhDuJYeneeU",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            940
+          ],
+          [
+            710,
+            989
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 31,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-brwIlRpMPqANtTi-cZJBMtGxclrQUSW-CHEsHlXClOpcqVE",
+      "source": "brwIlRpMPqANtTi",
+      "target": "cZJBMtGxclrQUSW",
+      "data": {
+        "sourcePosition": "top",
+        "targetPosition": "bottom",
+        "path": [
+          [
+            1610,
+            1220
+          ],
+          [
+            1610,
+            1171
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 32,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-BEnCvJhqrXFpYEV-oiEXWtPxxYKwjzH-COMQcGALuIUFskf",
+      "source": "BEnCvJhqrXFpYEV",
+      "target": "oiEXWtPxxYKwjzH",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            390
+          ],
+          [
+            710,
+            439
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 33,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-IqVCGVTaUCruVrq-jbqghOHqubcChTJ-mCCMrGqpbBbFoiF",
+      "source": "IqVCGVTaUCruVrq",
+      "target": "jbqghOHqubcChTJ",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            720
+          ],
+          [
+            710,
+            769
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 34,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-oiEXWtPxxYKwjzH-GrboWgGTEzuiLYP-amGMXwCjiYtzOvY",
+      "source": "oiEXWtPxxYKwjzH",
+      "target": "GrboWgGTEzuiLYP",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            500
+          ],
+          [
+            710,
+            549
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 35,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-qzacXEkapRNSdjt-rBIDixBWmCbhVlJ-LpcCIJJMZvfoKbk",
+      "source": "qzacXEkapRNSdjt",
+      "target": "rBIDixBWmCbhVlJ",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            170
+          ],
+          [
+            710,
+            219
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 36,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-rBIDixBWmCbhVlJ-BEnCvJhqrXFpYEV-TcASgOEZxwHyBPO",
+      "source": "rBIDixBWmCbhVlJ",
+      "target": "BEnCvJhqrXFpYEV",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            280
+          ],
+          [
+            710,
+            329
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 37,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-GrboWgGTEzuiLYP-IqVCGVTaUCruVrq-intBTZwcaDlriZh",
+      "source": "GrboWgGTEzuiLYP",
+      "target": "IqVCGVTaUCruVrq",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            610
+          ],
+          [
+            710,
+            659
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 38,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-UjLfnnjACdsfByt-avZmdaboWIKVBIx-cchFopLzyHtzVhK",
+      "source": "UjLfnnjACdsfByt",
+      "target": "avZmdaboWIKVBIx",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            1610,
+            280
+          ],
+          [
+            1610,
+            329
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 39,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-JzDCEFwHbmVhAKb-LPKEbMREEmBfTlD-rzqyeGxbbRgVCOL",
+      "source": "JzDCEFwHbmVhAKb",
+      "target": "LPKEbMREEmBfTlD",
+      "data": {
+        "sourcePosition": "right",
+        "targetPosition": "left",
+        "path": [
+          [
+            810,
+            1360
+          ],
+          [
+            1209,
+            1360
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 40,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-SWQjxxDeaEMJDCx-JIyLTNAZAtSMOyQ-IKOfqcQvQzRDHEt",
+      "source": "SWQjxxDeaEMJDCx",
+      "target": "JIyLTNAZAtSMOyQ",
+      "data": {
+        "sourcePosition": "top",
+        "targetPosition": "bottom",
+        "path": [
+          [
+            1310,
+            990
+          ],
+          [
+            1310,
+            171
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 41,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-cZJBMtGxclrQUSW-SWQjxxDeaEMJDCx-UQKJMuxhaqBUPnz",
+      "source": "cZJBMtGxclrQUSW",
+      "target": "SWQjxxDeaEMJDCx",
+      "data": {
+        "sourcePosition": "top",
+        "targetPosition": "right",
+        "path": [
+          [
+            1610,
+            1110
+          ],
+          [
+            1610,
+            1020
+          ],
+          [
+            1411,
+            1020
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 42,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-avZmdaboWIKVBIx-yViSpxlpSmGmsqu-nOauwCVqTvXxGwb",
+      "source": "avZmdaboWIKVBIx",
+      "target": "yViSpxlpSmGmsqu",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            1610,
+            390
+          ],
+          [
+            1610,
+            439
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 43,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-yViSpxlpSmGmsqu-FbYFAqrPEiEhebL-SOaXdtwbYfysApx",
+      "source": "yViSpxlpSmGmsqu",
+      "target": "FbYFAqrPEiEhebL",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            1610,
+            500
+          ],
+          [
+            1610,
+            549
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 44,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-FbYFAqrPEiEhebL-HaOdPSOapPJyoeF-NMcmvsmoqVAyccv",
+      "source": "FbYFAqrPEiEhebL",
+      "target": "HaOdPSOapPJyoeF",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            1610,
+            610
+          ],
+          [
+            1610,
+            659
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 45,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-HaOdPSOapPJyoeF-GXUfaErlibZMvlw-ReMBupayrXxmDGv",
+      "source": "HaOdPSOapPJyoeF",
+      "target": "GXUfaErlibZMvlw",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            1610,
+            720
+          ],
+          [
+            1610,
+            769
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 5
+      },
+      "index": 46,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    },
+    {
+      "id": "edge-jbqghOHqubcChTJ-KdGQNvKSRUQbTaO-hgNEQdDWQgcqqjo",
+      "source": "jbqghOHqubcChTJ",
+      "target": "KdGQNvKSRUQbTaO",
+      "data": {
+        "sourcePosition": "bottom",
+        "targetPosition": "top",
+        "path": [
+          [
+            710,
+            830
+          ],
+          [
+            710,
+            879
+          ]
+        ],
+        "title": ""
+      },
+      "style": {
+        "zIndex": 4
+      },
+      "index": 47,
+      "arrowHeadType": "arrow",
+      "type": "defaultEdge"
+    }
+  ],
+  "dataList": [
+    {
+      "id": "QWtazAjwdCfUJRU",
+      "paramName": "approved",
+      "dataType": "boolean",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "rhqGTSDFdicYREp",
+      "paramName": "concatenatedNewOwnerIds",
+      "dataType": "text",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "KOZIvjLatbuAzrn",
+      "paramName": "concatenatedUserIds",
+      "dataType": "text",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "TUkbiudEFybadhF",
+      "paramName": "execution",
+      "dataType": "object",
+      "isList": false,
+      "children": [
+        {
+          "id": "TUkbiudEFybadhF.fiTMCLIhzpSyJMM",
+          "paramName": "finishedAt",
+          "dataType": "dateTime",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.pTMfNJEPpYXTUEI",
+          "paramName": "startedAt",
+          "dataType": "dateTime",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.nnaEWqEQpRIBGAu",
+          "paramName": "startedBy",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.jdbMFAdcbYtcaph",
+          "paramName": "updatedAt",
+          "dataType": "dateTime",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.hdItyUGAuTAXYjb",
+          "paramName": "updatedBy",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.NXZzkqgPpzoRulG",
+          "paramName": "createdAt",
+          "dataType": "dateTime",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.SEtrBUbOYxUkLEn",
+          "paramName": "status",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.LXcVEzhfsftgqrs",
+          "paramName": "triggerDeletedAt",
+          "dataType": "dateTime",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.ckaezNUqHpYfzlW",
+          "paramName": "triggerName",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.PSNhJvbsemuPpOS",
+          "paramName": "triggerType",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.KbtlDikAYpHgZAL",
+          "paramName": "triggerId",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.llHZvwGdCqAQMIt",
+          "paramName": "modelVersion",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.xcBBpoDExNGFIdU",
+          "paramName": "modelId",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.ROvCqhUxRMsJvUj",
+          "paramName": "modelName",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.oXzPxdnxsDSLgGZ",
+          "paramName": "deploymentId",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.xxlLodrrwbdAaPV",
+          "paramName": "eventId",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.oWtTpkfQMRHiBkf",
+          "paramName": "workflowCluster",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.QiYVAiLfYmyYKHQ",
+          "paramName": "processKey",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "TUkbiudEFybadhF.HpgxmZjZYzzuoYt",
+          "paramName": "id",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        }
+      ],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "FtumcsZgUGGCeXi",
+      "paramName": "iterator",
+      "dataType": "number",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": 0,
+      "isOutput": false
+    },
+    {
+      "id": "qUBuYSFeMGeSgHP",
+      "paramName": "newOwnerId",
+      "dataType": "number",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "pNUHyNgVLYkagMW",
+      "paramName": "newOwnerIds",
+      "dataType": "number",
+      "isList": true,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": [],
+      "isOutput": false
+    },
+    {
+      "id": "jNWqirXBJJSaLQH",
+      "paramName": "newOwnerObject",
+      "dataType": "object",
+      "isList": false,
+      "children": [
+        {
+          "id": "jNWqirXBJJSaLQH.MDaQkQimQzuOWJI",
+          "paramName": "id",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.nKwAQPZlloqIMnX",
+          "paramName": "displayName",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.WXTttUEmtaWYUll",
+          "paramName": "userName",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.lDbjANGhtWfgYBH",
+          "paramName": "emailAddress",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.lSDprBSVfJaSvMO",
+          "paramName": "modified",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.xqcattJFmjSpsbL",
+          "paramName": "created",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.ZLNIHepkopDPfHO",
+          "paramName": "roleId",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.YacEgKFnzpuorRD",
+          "paramName": "isSystemUser",
+          "dataType": "boolean",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "jNWqirXBJJSaLQH.qqdNateXFCcNhIl",
+          "paramName": "isActive",
+          "dataType": "boolean",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        }
+      ],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "tOfGzTleFmNGXCu",
+      "paramName": "newOwnerPerson",
+      "dataType": "person",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "DtaiyzImXfpJYqm",
+      "paramName": "sendEmails",
+      "dataType": "boolean",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": true,
+      "isOutput": false
+    },
+    {
+      "id": "iEpYJABHzIWrSKb",
+      "paramName": "userId",
+      "dataType": "number",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "CyXpbZKfoFawciT",
+      "paramName": "userIds",
+      "dataType": "number",
+      "isList": true,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "iduYPgPemUlpPJU",
+      "paramName": "userObject",
+      "dataType": "object",
+      "isList": false,
+      "children": [
+        {
+          "id": "iduYPgPemUlpPJU.EiTOoxAKiKVMYKI",
+          "paramName": "id",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.dYbjXQFGEwsFFza",
+          "paramName": "displayName",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.VquwXpbWDyyJsPY",
+          "paramName": "userName",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.VnNvDfinRSCjOke",
+          "paramName": "emailAddress",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.CIrBCJOMQBXiRJN",
+          "paramName": "modified",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.KhfsOdvBSRYgpZT",
+          "paramName": "created",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.crypaCjuQlgsVWy",
+          "paramName": "roleId",
+          "dataType": "number",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.OVFhnfNCCbMHXfM",
+          "paramName": "isSystemUser",
+          "dataType": "boolean",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "iduYPgPemUlpPJU.twHYgroNpjMmWtD",
+          "paramName": "isActive",
+          "dataType": "boolean",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        }
+      ],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "klJpzpEKZZhLSHk",
+      "paramName": "userPerson",
+      "dataType": "person",
+      "isList": false,
+      "children": [],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    },
+    {
+      "id": "rCHfCIwzDUBivjc",
+      "paramName": "workflow",
+      "dataType": "object",
+      "isList": false,
+      "children": [
+        {
+          "id": "rCHfCIwzDUBivjc.RrteeTzQcWYPcOV",
+          "paramName": "instanceId",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "rCHfCIwzDUBivjc.YYeJBSLWvcOgjkI",
+          "paramName": "version",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        },
+        {
+          "id": "rCHfCIwzDUBivjc.uriEziQUJqFcgnZ",
+          "paramName": "modelId",
+          "dataType": "text",
+          "isList": false,
+          "children": [],
+          "showChildren": false,
+          "entitySubType": null,
+          "value": null,
+          "isOutput": false
+        }
+      ],
+      "showChildren": false,
+      "entitySubType": null,
+      "value": null,
+      "isOutput": false
+    }
+  ],
+  "schema": {
+    "inputs": {
+      "eeucAtXyhsaukdx": {
+        "name": "newOwnerIds",
+        "type": "number",
+        "subType": null,
+        "isList": true,
+        "isNullable": true,
+        "id": "eeucAtXyhsaukdx",
+        "parent": null,
+        "isChild": false
+      },
+      "hsdPtDIuzxUjzuP": {
+        "name": "sendEmails",
+        "type": "boolean",
+        "subType": null,
+        "isList": false,
+        "isNullable": true,
+        "id": "hsdPtDIuzxUjzuP",
+        "parent": null,
+        "isChild": false
+      },
+      "DtWcdIUDXftvzml": {
+        "name": "userIds",
+        "type": "number",
+        "subType": null,
+        "isList": true,
+        "isNullable": false,
+        "id": "DtWcdIUDXftvzml",
+        "parent": null,
+        "isChild": false
+      }
+    },
+    "outputs": {}
+  }
+}

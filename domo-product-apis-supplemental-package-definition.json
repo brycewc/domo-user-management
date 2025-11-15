@@ -1,0 +1,793 @@
+{
+  "packageId": "3a08d004-f80c-4d44-879f-5b0319968fd1",
+  "version": "1.0.17",
+  "code": "/* eslint require-atomic-updates: 0 */\n\nconst codeengine = require('codeengine');\n\nclass Helpers {\n\t/**\n\t * Helper function to handle API requests and errors\n\t * @param {string} method - The HTTP method\n\t * @param {string} url - The endpoint URL\n\t * @param {object} [body=null] - The request body\n\t * @param {object} [headers=null] - The request headers\n\t * @param {string} [content='application/json'] - Request body content type\n\t * @returns {object} The response data\n\t * @throws {error} If the request fails\n\t */\n\tstatic async handleRequest(\n\t\tmethod,\n\t\turl,\n\t\tbody = null,\n\t\theaders = null,\n\t\tcontentType = 'application/json'\n\t) {\n\t\ttry {\n\t\t\treturn await codeengine.sendRequest(\n\t\t\t\tmethod,\n\t\t\t\turl,\n\t\t\t\tbody,\n\t\t\t\theaders,\n\t\t\t\tcontentType\n\t\t\t);\n\t\t} catch (error) {\n\t\t\tconsole.error(\n\t\t\t\t`Error with ${method} request to ${url}\\nPayload:\\n${JSON.stringify(\n\t\t\t\t\tbody,\n\t\t\t\t\tnull,\n\t\t\t\t\t2\n\t\t\t\t)}\\nError:\\n`,\n\t\t\t\terror\n\t\t\t);\n\t\t\tthrow error;\n\t\t}\n\t}\n}\n\nconst { handleRequest } = Helpers;\n\n/**\n * Generates a Universally Unique Identifier (UUID)\n *\n * @returns {string} uuid\n */\nfunction generateUUID() {\n\treturn 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {\n\t\tvar r = (Math.random() * 16) | 0,\n\t\t\tv = c == 'x' ? r : (r & 0x3) | 0x8;\n\t\treturn v.toString(16);\n\t});\n}\n\n/**\n * Determine the length of the provided list\n *\n * @param {integer[]} list - The list to get the length of\n * @returns {integer} - The length of the list\n */\nfunction getListOfNumbersLength(list) {\n\treturn list.length;\n}\n\n/**\n * Retrieve the number at the specified index in a list\n *\n * @param {integer[]} list - The list of numbers to source from\n * @param {integer} index - The index of the number to get\n * @returns {integer} - The number at the specified index\n */\nfunction getNumberFromList(list, index) {\n\treturn list[index];\n}\n\n/**\n * Takes an Epoch timestamp as a number and converts it to datetime\n *\n * @param {integer} epoch - The Epoch timestamp to cast, sent as a number\n * @returns {datetime} - The number at the specified index\n */\nfunction castEpochTimestampNumberAsDatetime(epoch) {\n\treturn new Date(epoch);\n}\n\n/**\n * Deletes all cards on a given page then deletes the page\n *\n * @param {string} pageId - integer id of page to delete\n * @returns {boolean} result - true if successful\n */\nasync function deletePageAndCards(pageId) {\n\tconst page = await handleRequest(\n\t\t'GET',\n\t\t`/api/content/v3/stacks/${pageId}/cards`\n\t);\n\n\tconst cardIds = page.cards.map((card) => card.id).join(',');\n\n\tawait handleRequest(\n\t\t'DELETE',\n\t\t`/api/content/v1/cards/bulk?cardIds=${cardIds}`\n\t);\n\n\tawait handleRequest('DELETE', `/api/content/v1/pages/${pageId}`);\n\n\treturn true;\n}\n\n/**\n * Deletes/revokes an API access token by ID\n *\n * @param {integer} accessTokenId - ID of the access token\n * @returns {null}\n */\nasync function deleteAccessToken(accessTokenId) {\n\tawait handleRequest('DELETE', `api/data/v1/accesstokens/${accessTokenId}`);\n}\n\n/**\n * Updates users in bulk from arrays of user properties (that's how trigger alerts pass them)\n *\n * @param {string[]} ids - user IDs\n * @param {string[]} names - user display names\n * @param {string[]} titles - user titles\n * @param {string[]} departments - user departments\n * @param {string[]} employeeIds - user employee IDs\n * @param {string[]} employeeNumbers - user employee numbers\n * @param {integer[]} hireDates - user hire dates as epoch timestamps in milliseconds\n * @param {string[]} reportsToIds - user manager IDs\n */\nasync function bulkUpdateUsersFromArrays(\n\tids,\n\tnames,\n\ttitles,\n\tdepartments,\n\temployeeIds,\n\temployeeNumbers,\n\thireDates,\n\treportsToIds\n) {\n\t// Build full user object[] first to ensure aligned indices\n\tconst allUsers = ids.map((id, index) => ({\n\t\tid,\n\t\tdisplayName: names[index],\n\t\ttitle: titles[index],\n\t\tdepartment: departments[index],\n\t\t// email: emails[index],\n\t\t// alternateEmail: alternateEmails[index],\n\t\t// phoneNumber: phoneNumbers[index],\n\t\t// deskPhoneNumber: deskPhoneNumbers[index],\n\t\t// location: locations[index],\n\t\t// timeZone: timeZones[index],\n\t\t// locale: locales[index],\n\t\temployeeId: employeeIds[index],\n\t\temployeeNumber: employeeNumbers[index],\n\t\thireDate: hireDates[index],\n\t\treportsTo: reportsToIds[index]\n\t}));\n\n\tconst batchSize = 50;\n\tfor (let i = 0; i < allUsers.length; i += batchSize) {\n\t\tconst batch = allUsers.slice(i, i + batchSize);\n\t\tconst body = {\n\t\t\ttransactionId: generateUUID(),\n\t\t\tusers: batch\n\t\t};\n\t\tawait handleRequest('PUT', 'api/content/v2/users/bulk', body);\n\t}\n}\n\n/**\n * Updates reportsTo field (manager) of a user\n *\n * @param {integer} userId - ID of user to update\n * @param {integer} managerId - ID of the manager user to set as reportsTo\n * @returns {null}\n */\nasync function updateManager(userId, managerId) {\n\tconst url = `/api/content/v2/users/${userId}/teams`;\n\tconst payload = { reportsTo: [{ userId: managerId }] };\n\tawait handleRequest('POST', url, payload);\n}\n\n/**\n * Updates roles for multiple users\n * @param {Person[]} people - The people\n * @param {integer} roleId - The new role\n */\nasync function bulkUpdateUserRoles(people, roleId) {\n\tawait handleRequest(\n\t\t'PUT',\n\t\t`/api/authorization/v1/roles/${roleId}/users`,\n\t\tpeople\n\t);\n}\n\n/**\n * Get users that have a grant (or grants by comma separated values)\n *\n * @param {string} grant - grant or grants to search for\n * @returns {object[]} users - Array of users that have that grant\n */\nasync function getUsersByGrant(grant) {\n\tconst limit = 100;\n\tlet offset = 0;\n\tlet hasMoreData = true;\n\tlet users = [];\n\n\twhile (hasMoreData) {\n\t\tlet response = await handleRequest(\n\t\t\t'GET',\n\t\t\t`/api/content/v1/typeahead?type=userByEmail&authorities=${grant}&limit=${limit}&offset=${offset}`\n\t\t);\n\t\tconsole.log('Response:', response);\n\t\tif (!response || !response.users) {\n\t\t\tthrow new Error('Invalid response from getUsersByGrant');\n\t\t}\n\t\t// Cast id to string for consistency\n\t\tresponse.users.forEach((user) => {\n\t\t\tuser.id = user.id.toString();\n\t\t});\n\n\t\tusers.push(...response.users);\n\t\tif (response.users.length < limit) {\n\t\t\thasMoreData = false;\n\t\t}\n\t\toffset += limit;\n\t}\n\treturn users;\n}\n\n/**\n * Gets members of a group\n *\n * @param {integer} groupId - ID of the group\n * @returns {object[]} members - Array of users in the group\n */\nasync function getGroupMembers(groupId) {\n\tconst response = await handleRequest(\n\t\t'GET',\n\t\t`/api/content/v2/groups/${groupId}/permissions?includeUsers=true`\n\t);\n\tlet members = response.members.filter((m) => m.type != 'GROUP');\n\treturn members;\n}\n\n/**\n * Updates members of a group\n *\n * @param {integer} groupId - ID of the group\n * @param {object[]} addMembers - Array of users to add\n * @param {object[]} removeMembers- Array of users to remove\n * @returns {null}\n */\nasync function updateGroupMembers(groupId, addMembers, removeMembers) {\n\t// Ensure both arrays have the correct structure\n\taddMembers = addMembers.map((m) => ({\n\t\tid: m.id,\n\t\ttype: 'USER'\n\t}));\n\tremoveMembers = removeMembers.map((m) => ({\n\t\tid: m.id,\n\t\ttype: 'USER'\n\t}));\n\t// Filter out removeMembers from addMembers\n\taddMembers = addMembers.filter(\n\t\t(m) => !removeMembers.some((r) => r.id === m.id)\n\t);\n\tconst body = [\n\t\t{\n\t\t\tgroupId,\n\t\t\taddMembers,\n\t\t\tremoveMembers\n\t\t}\n\t];\n\tawait handleRequest('PUT', '/api/content/v2/groups/access', body);\n}\n\n/**\n * Get a user object from a person object\n *\n * @param {Person} person - The person\n * @returns {object} user - Information about the person\n * \tProperties:\n * \t- id {integer}\n *  - displayName {string}\n *  - userName {string}\n *  - emailAddress {string}\n *  - modified {integer}\n *  - created {integer}\n *  - roleId {integer}\n *  - isSystemUser {boolean}\n *  - isActive {boolean}\n */\nasync function getPerson(person) {\n\tconst response = await handleRequest(\n\t\t'GET',\n\t\t`api/identity/v1/users/${person}?parts=detailed`\n\t);\n\ttry {\n\t\tconst users = response.users;\n\t\tconst firstUser = users[0];\n\t\tconst attributes = firstUser.attributes;\n\n\t\tif (!attributes || !attributes.length) return undefined;\n\n\t\tconst user = attributes.reduce(\n\t\t\t(map, obj) => ({\n\t\t\t\t...map,\n\t\t\t\t[obj.key]: Array.isArray(obj.values) ? obj.values[0] : undefined\n\t\t\t}),\n\t\t\t{}\n\t\t);\n\t\treturn user;\n\t} catch (error) {\n\t\tconsole.error('Error processing user attributes:', error);\n\t\treturn undefined;\n\t}\n}\n\n/**\n * Casts a string User ID to a person object\n *\n * @param {string} userId - ID of the user\n * @returns {Person} person - Person object\n */\nasync function castUserIdToPerson(userId) {\n\treturn userId;\n}\n\n/**\n * Casts an integer User ID to a person object\n *\n * @param {integer} userId - ID of the user\n * @returns {Person} person - Person object\n */\nasync function castUserIdNumToPerson(userId) {\n\treturn userId.toString();\n}\n\n/**\n * Casts an array of integer User IDs to an array of person objects\n *\n * @param {string[]} userIds - IDs of the users\n * @returns {Person[]} persons - Array of person objects\n */\nasync function castUserIdListToPersonList(userIds) {\n\treturn userIds;\n}\n\n/**\n * Casts an array of integer User IDs to an array of person objects\n *\n * @param {integer[]} userIds - IDs of the users\n * @returns {Person[]} persons - Array of person objects\n */\nasync function castUserIdNumListToPersonList(userIds) {\n\treturn userIds.map(String);\n}\n\n/**\n * Concatenates a list of numbers into a text string separated by the specified separator\n *\n * @param {integer[]} list - Array of integers\n * @returns {string} concatenatedList - Concatenated string of integers\n */\nasync function concatNumList(list, separator = ',') {\n\treturn list.join(separator);\n}\n\nmodule.exports = {generateUUID,getListOfNumbersLength,getNumberFromList,castEpochTimestampNumberAsDatetime,deletePageAndCards,deleteAccessToken,bulkUpdateUsersFromArrays,updateManager,bulkUpdateUserRoles,getUsersByGrant,getGroupMembers,updateGroupMembers,getPerson,castUserIdToPerson,castUserIdNumToPerson,castUserIdListToPersonList,castUserIdNumListToPersonList,concatNumList};",
+  "createdBy": "1813188617",
+  "updatedOn": "2025-11-09T19:28:55.805Z",
+  "releasedOn": "2025-11-09T19:28:55.805Z",
+  "functions": [
+    {
+      "name": "bulkUpdateUserRoles",
+      "displayName": "Bulk Update User Roles",
+      "description": "Updates roles for multiple users",
+      "example": "### Input \n\n - **people**: \n  ``` \nnull\n```\n - **roleId**: ",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "people",
+          "displayName": "people",
+          "type": "person",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "roleId",
+          "displayName": "roleId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ]
+    },
+    {
+      "name": "bulkUpdateUsersFromArrays",
+      "displayName": "Bulk Update Users from Arrays",
+      "description": "Updates users in bulk from arrays of user properties (that's how trigger alerts pass them)",
+      "example": "### Input \n\n - **ids**: \n  ``` \nnull\n```\n - **names**: \n  ``` \nnull\n```\n - **titles**: \n  ``` \nnull\n```\n - **departments**: \n  ``` \nnull\n```\n - **employeeIds**: \n  ``` \nnull\n```\n - **employeeNumbers**: \n  ``` \nnull\n```\n - **hireDates**: \n  ``` \nnull\n```\n - **reportsToIds**: \n  ``` \nnull\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "ids",
+          "displayName": "ids",
+          "type": "text",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "names",
+          "displayName": "names",
+          "type": "text",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "titles",
+          "displayName": "titles",
+          "type": "text",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "departments",
+          "displayName": "departments",
+          "type": "text",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "employeeIds",
+          "displayName": "employeeIds",
+          "type": "text",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "employeeNumbers",
+          "displayName": "employeeNumbers",
+          "type": "text",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "hireDates",
+          "displayName": "hireDates",
+          "type": "number",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "reportsToIds",
+          "displayName": "reportsToIds",
+          "type": "text",
+          "value": null,
+          "nullable": true,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        }
+      ]
+    },
+    {
+      "name": "castEpochTimestampNumberAsDatetime",
+      "displayName": "Cast Epoch Timestamp as Datetime",
+      "description": "Takes an Epoch timestamp as a number and converts it to datetime",
+      "example": "### Input \n\n - **epoch**: \n\n --- \n\n### Output \n\n - **datetime**: ",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "epoch",
+          "displayName": "epoch",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "datetime",
+        "displayName": "datetime",
+        "type": "dateTime",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "castUserIdListToPersonList",
+      "displayName": "Cast User ID Text List to Person List",
+      "description": "Casts an array of integer User IDs to an array of person objects",
+      "example": "### Input \n\n - **userIds**: \n  ``` \nnull\n```\n\n --- \n\n### Output \n\n - **persons**: \n  ``` \n[]\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "userIds",
+          "displayName": "userIds",
+          "type": "text",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "persons",
+        "displayName": "persons",
+        "type": "person",
+        "value": null,
+        "nullable": true,
+        "isList": true,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "castUserIdNumListToPersonList",
+      "displayName": "Cast User ID Number List to Person List",
+      "description": "Casts an array of integer User IDs to an array of person objects",
+      "example": "### Input \n\n - **userIds**: \n  ``` \nnull\n```\n\n --- \n\n### Output \n\n - **persons**: \n  ``` \n[]\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "userIds",
+          "displayName": "userIds",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "persons",
+        "displayName": "persons",
+        "type": "person",
+        "value": null,
+        "nullable": true,
+        "isList": true,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "castUserIdNumToPerson",
+      "displayName": "Cast User ID Number to Person",
+      "description": "Casts an integer User ID to a person object",
+      "example": "### Input \n\n - **userId**: \n\n --- \n\n### Output \n\n - **person**: ",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "userId",
+          "displayName": "userId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "person",
+        "displayName": "person",
+        "type": "person",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "castUserIdToPerson",
+      "displayName": "Cast User ID Text to Person",
+      "description": "Casts a string User ID to a person object",
+      "example": "### Input \n\n - **userId**: \n\n --- \n\n### Output \n\n - **person**: ",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "userId",
+          "displayName": "userId",
+          "type": "text",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "person",
+        "displayName": "person",
+        "type": "person",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "concatNumList",
+      "displayName": "Concat Number List",
+      "description": "Concatenate an array of integers into a string separated by specified separator",
+      "example": "### Input \n\n - **list**: [1234, 5678]\n\n - **separator**: \",\"\n\n --- \n\n### Output \n\n - **concatenatedList**: \"1234, 5678\"",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "list",
+          "displayName": "list",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "separator",
+          "displayName": "separator",
+          "type": "text",
+          "value": ",",
+          "nullable": true,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "concatenatedList",
+        "displayName": "concatenatedList",
+        "type": "text",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "deleteAccessToken",
+      "displayName": "Delete Access Token",
+      "description": "Deletes/revokes an API access token by ID",
+      "example": "### Input \n - **accessTokenId**: integer",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "accessTokenId",
+          "displayName": "accessTokenId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ]
+    },
+    {
+      "name": "deletePageAndCards",
+      "displayName": "Delete Page and Cards",
+      "description": "Deletes all cards on a given page then deletes the page",
+      "example": "### Input \n - **pageId**: integer\n### Output \n - **result**: boolean",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "pageId",
+          "displayName": "pageId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "result",
+        "displayName": "result",
+        "type": "boolean",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "generateUUID",
+      "displayName": "Generate UUID",
+      "description": "Generates a Universally Unique Identifier (UUID)",
+      "example": "### Input \nNone\n### Output \n - **uuid**: string",
+      "isPrivate": false,
+      "inputs": [],
+      "output": {
+        "name": "uuid",
+        "displayName": "uuid",
+        "type": "text",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "getGroupMembers",
+      "displayName": "Get Group Members",
+      "description": "",
+      "example": "### Input \n - **groupId**: integer\n### Output \n - **members**: \n  ``` \n[\n   {\n      \"type\": string,\n      \"id\": string,\n      \"displayName\": string\n   }\n]\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "groupId",
+          "displayName": "groupId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "members",
+        "displayName": "members",
+        "type": "object",
+        "value": null,
+        "nullable": true,
+        "isList": true,
+        "children": [
+          {
+            "name": "type",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "id",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "displayName",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          }
+        ],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "getListOfNumbersLength",
+      "displayName": "Get List of Numbers Length",
+      "description": "Returns the length of a list (array) of numbers (integers)",
+      "example": "### Input \n\n - **list**: \n  ``` \nnull\n```\n\n --- \n\n### Output \n\n - **length**: ",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "list",
+          "displayName": "list",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "length",
+        "displayName": "length",
+        "type": "number",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "getNumberFromList",
+      "displayName": "Get Number from List",
+      "description": "Returns a number (integer) at a specified index from a list (array) of numbers (integers)",
+      "example": "### Input \n\n - **list**: \n  ``` \nnull\n```\n - **index**: \n\n --- \n\n### Output \n\n - **number**: ",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "list",
+          "displayName": "list",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "index",
+          "displayName": "index",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "number",
+        "displayName": "number",
+        "type": "number",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "getPerson",
+      "displayName": "Get Person",
+      "description": "Returns a full user object from a person object",
+      "example": "### Input \n\n - **person**: \n\n --- \n\n### Output \n\n - **user**: \n  ``` \nProperties:\n- id {integer}\n- displayName {string}\n- userName {string}\n- emailAddress {string}\n- modified {integer}\n- created {integer}\n- roleId {integer}\n- isSystemUser {boolean}\n- isActive {boolean}\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "person",
+          "displayName": "person",
+          "type": "person",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "user",
+        "displayName": "user",
+        "type": "object",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [
+          {
+            "name": "id",
+            "displayName": null,
+            "type": "number",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "displayName",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "userName",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "emailAddress",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "modified",
+            "displayName": null,
+            "type": "number",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "created",
+            "displayName": null,
+            "type": "number",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "roleId",
+            "displayName": null,
+            "type": "number",
+            "value": "",
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "isSystemUser",
+            "displayName": null,
+            "type": "boolean",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "isActive",
+            "displayName": null,
+            "type": "boolean",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          }
+        ],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "getUsersByGrant",
+      "displayName": "Get Users by Grant",
+      "description": "Get users that have a grant (or grants by comma separated values)",
+      "example": "### Input \n - **grant**: string\n### Output \n - **users**: \n  ``` \n[\n   {\n      \"id\": string,\n      \"displayName\": string,\n      \"avatarKey\": string,\n      \"email\": string\n   }\n]\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "grant",
+          "displayName": "grant",
+          "type": "text",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ],
+      "output": {
+        "name": "users",
+        "displayName": "users",
+        "type": "object",
+        "value": null,
+        "nullable": true,
+        "isList": true,
+        "children": [
+          {
+            "name": "id",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "displayName",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "avatarKey",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          },
+          {
+            "name": "email",
+            "displayName": null,
+            "type": "text",
+            "value": null,
+            "nullable": false,
+            "isList": false,
+            "children": null,
+            "entitySubType": null
+          }
+        ],
+        "entitySubType": null
+      }
+    },
+    {
+      "name": "updateGroupMembers",
+      "displayName": "Update Group Members",
+      "description": "",
+      "example": "### Input \n\n - **groupId**: integer\n - **addMembers**: \n  ``` \n[\n   {\n      \"id\": string\n   }\n]\n```\n - **removeMembers**: \n  ``` \n[\n   {\n      \"id\": string\n   }\n]\n```",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "groupId",
+          "displayName": "groupId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "addMembers",
+          "displayName": "addMembers",
+          "type": "object",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [
+            {
+              "name": "id",
+              "displayName": "id",
+              "type": "text",
+              "value": null,
+              "nullable": false,
+              "isList": false,
+              "children": null,
+              "entitySubType": null
+            }
+          ],
+          "entitySubType": null
+        },
+        {
+          "name": "removeMembers",
+          "displayName": "removeMembers",
+          "type": "object",
+          "value": null,
+          "nullable": false,
+          "isList": true,
+          "children": [
+            {
+              "name": "id",
+              "displayName": "id",
+              "type": "text",
+              "value": null,
+              "nullable": false,
+              "isList": false,
+              "children": null,
+              "entitySubType": null
+            }
+          ],
+          "entitySubType": null
+        }
+      ]
+    },
+    {
+      "name": "updateManager",
+      "displayName": "Update Manager",
+      "description": "Updates reportsTo field (manager) of a user",
+      "example": "### Input \n - **userId**: integer\n - **managerId**: integer",
+      "isPrivate": false,
+      "inputs": [
+        {
+          "name": "userId",
+          "displayName": "userId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        },
+        {
+          "name": "managerId",
+          "displayName": "managerId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null
+        }
+      ]
+    }
+  ],
+  "configuration": {
+    "accountsMapping": [],
+    "mlModel": [],
+    "externalPackageMapping": {}
+  },
+  "createdOn": "2025-11-09T19:07:16.573Z",
+  "updatedBy": "1813188617"
+}
