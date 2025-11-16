@@ -70,6 +70,25 @@ async function deleteUserSessions(userId) {
 }
 
 /**
+ * Retrieve all active sessions and delete those belonging to the specified users.
+ *
+ * @param {number[]} userIds - Array of Domo user IDs for which to delete active sessions.
+ * @returns {Promise<void>} Resolves when all users' sessions are deleted or rejects on error.
+ */
+async function deleteUsersSessions(userIds) {
+	const url = '/api/sessions/v1/admin?limit=99999999';
+	// Fetch all sessions (potentially large number depending on 'limit')
+	const response = await handleRequest('GET', url);
+
+	// Find sessions assigned to any of the specified users
+	const sessionsToDelete = response.filter((s) => userIds.includes(s.userId));
+	if (sessionsToDelete.length > 0) {
+		// Delete all sessions concurrently and wait for completion
+		await Promise.all(sessionsToDelete.map((s) => deleteSession(s.id)));
+	}
+}
+
+/**
  * Delete a session by its session ID.
  *
  * @param {string} sessionId - The ID of the session to delete.

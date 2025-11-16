@@ -278,28 +278,38 @@ class DomoPackageCreator {
 			}
 		}
 
+		// Replace hardcoded values using string replacement
+		let workflowString = JSON.stringify(preparedWorkflow);
+
 		// Replace hardcoded user ID (1813188617) with current user ID
-		// This still uses string replacement as it's in various value fields
 		if (currentUserId) {
 			console.log(`🔄 Updating user ID from 1813188617 to: ${currentUserId}`);
-			let workflowString = JSON.stringify(preparedWorkflow);
 			const userIdRegex = new RegExp('"value":\\s*"1813188617"', 'g');
 			workflowString = workflowString.replace(
 				userIdRegex,
 				`"value": "${currentUserId}"`
 			);
-			const updatedWorkflow = JSON.parse(workflowString);
-
-			console.log(
-				'✅ Workflow definition prepared with updated package references and user ID'
-			);
-			return updatedWorkflow;
 		}
 
+		// Replace hardcoded Domo instance URL (https://domo.domo.com) with current instance
+		const instanceDomain = this.baseUrl
+			.replace('https://', '')
+			.replace('.domo.com', '');
+		console.log(`🔄 Updating Domo instance URL to: ${this.baseUrl}`);
+		const domoUrlRegex = new RegExp('https://domo\\.domo\\.com', 'g');
+		workflowString = workflowString.replace(domoUrlRegex, this.baseUrl);
+
+		// Replace hardcoded card ID (/604087349) with string literal /cardId
+		console.log(`🔄 Replacing specific card ID with /cardId placeholder`);
+		const cardIdRegex = new RegExp('/604087349', 'g');
+		workflowString = workflowString.replace(cardIdRegex, '/cardId');
+
+		const updatedWorkflow = JSON.parse(workflowString);
+
 		console.log(
-			'✅ Workflow definition prepared with updated package references'
+			'✅ Workflow definition prepared with updated package references, user ID, instance URL, and card ID'
 		);
-		return preparedWorkflow;
+		return updatedWorkflow;
 	}
 
 	async createWorkflow(packageMappings) {
@@ -845,11 +855,141 @@ class DomoPackageCreator {
 		}
 	}
 
+	async searchForExistingPackage(packageName, currentUserId) {
+		console.log(`🔍 Searching for existing package "${packageName}"...`);
+
+		try {
+			const response = await fetch(`${this.baseUrl}/api/search/v1/query`, {
+				method: 'POST',
+				headers: {
+					'X-Domo-Developer-Token': this.accessToken,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					query: packageName,
+					entityList: [['package']],
+					count: 100,
+					offset: 0,
+					sort: {
+						isRelevance: true,
+						fieldSorts: [
+							{
+								field: 'lastModified',
+								sortOrder: 'DESC'
+							}
+						]
+					},
+					filters: [
+						{
+							facetType: 'user',
+							filterType: 'term',
+							field: 'owned_by_id',
+							value: `${currentUserId}:USER`
+						}
+					],
+					useEntities: true,
+					combineResults: true,
+					facetValueLimit: 1000,
+					hideSearchObjects: true,
+					state: 'facet'
+				})
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.log(
+					`⚠️ Package search API error: ${response.status} ${errorText}`
+				);
+				return null;
+			}
+
+			const data = await response.json();
+
+			if (
+				data.searchResultsMap &&
+				data.searchResultsMap.package &&
+				data.searchResultsMap.package.length > 0
+			) {
+				// Find exact match by name
+				const exactMatch = data.searchResultsMap.package.find(
+					(pkg) => pkg.name === packageName
+				);
+
+				if (exactMatch) {
+					console.log(`✅ Found existing package with ID: ${exactMatch.uuid}`);
+					return exactMatch.uuid;
+				}
+			}
+
+			console.log('▶️ No existing package found');
+			return null;
+		} catch (error) {
+			console.log(`⚠️ Error searching for existing package: ${error.message}`);
+			return null;
+		}
+	}
+
+	async getPackageLatestVersion(packageId) {
+		console.log(`🔍 Getting latest version for package ${packageId}...`);
+
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/api/codeengine/v2/packages/${packageId}`,
+				{
+					method: 'GET',
+					headers: {
+						'X-Domo-Developer-Token': this.accessToken,
+						'Content-Type': 'application/json'
+					}
+				}
+			);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(
+					`Failed to get package versions: ${response.status} ${errorText}`
+				);
+			}
+
+			const data = await response.json();
+
+			if (data.versions && data.versions.length > 0) {
+				// Find the highest version
+				const versions = data.versions.map((v) => v.version);
+				const highestVersion = versions.sort((a, b) => {
+					const aParts = a.split('.').map(Number);
+					const bParts = b.split('.').map(Number);
+					for (let i = 0; i < 3; i++) {
+						if (aParts[i] !== bParts[i]) {
+							return bParts[i] - aParts[i];
+						}
+					}
+					return 0;
+				})[0];
+
+				console.log(`✅ Latest version found: ${highestVersion}`);
+				return highestVersion;
+			}
+
+			return '1.0.0';
+		} catch (error) {
+			throw new Error(`Failed to get package versions: ${error.message}`);
+		}
+	}
+
+	incrementVersion(version) {
+		const parts = version.split('.').map(Number);
+		parts[2] += 1; // Increment patch version by 1
+		return parts.join('.');
+	}
+
 	preparePackage(
 		packageDefinition,
 		filename,
 		logDatasetId = null,
-		domostatsScheduledReportsDatasetId = null
+		domostatsScheduledReportsDatasetId = null,
+		existingPackageId = null,
+		version = '1.0.0'
 	) {
 		console.log('🔧 Preparing package for deployment...');
 
@@ -860,18 +1000,29 @@ class DomoPackageCreator {
 		// Create a copy to avoid mutating the original
 		const preparedPackage = JSON.parse(JSON.stringify(packageDefinition));
 
-		// Reset version to 1.0.0
-		preparedPackage.version = '1.0.0';
+		// Set version
+		preparedPackage.version = version;
 
-		// Clear package ID so a new one will be generated
-		delete preparedPackage.packageId;
+		// Handle existing package update vs new package creation
+		if (existingPackageId) {
+			console.log(
+				`🔄 Updating existing package ${existingPackageId} to version ${version}`
+			);
+			preparedPackage.packageId = existingPackageId;
+			preparedPackage.id = existingPackageId;
+		} else {
+			console.log(`🆕 Creating new package with version ${version}`);
+			// Clear package ID so a new one will be generated
+			delete preparedPackage.packageId;
+			preparedPackage.id = '';
+		}
+
+		// Clear metadata fields
 		delete preparedPackage.createdOn;
 		delete preparedPackage.updatedOn;
 		delete preparedPackage.releasedOn;
 		delete preparedPackage.createdBy;
 		delete preparedPackage.updatedBy;
-
-		preparedPackage.id = '';
 
 		// Add display name based on filename
 		preparedPackage.name = this.generateDisplayName(filename);
@@ -885,7 +1036,7 @@ class DomoPackageCreator {
 		delete preparedPackage.configuration;
 
 		// Replace hardcoded logDatasetId with dynamic one for MajorDomo package
-		if (logDatasetId && filename.includes('majordomo')) {
+		if (logDatasetId && filename.includes('majordomo-user-offboarding')) {
 			console.log(`🔄 Updating log dataset ID to: ${logDatasetId}`);
 			preparedPackage.code = preparedPackage.code.replace(
 				/const logDatasetId = '[^']+'/,
@@ -908,14 +1059,15 @@ class DomoPackageCreator {
 		}
 
 		console.log(
-			`✅ Package prepared with version 1.0.0, cleared packageId, and name: ${preparedPackage.name}`
+			`✅ Package prepared with version ${version}, name: ${preparedPackage.name}`
 		);
 		return preparedPackage;
 	}
 
-	async createPackageInDomo(packageDefinition) {
+	async createPackageInDomo(packageDefinition, isUpdate = false) {
+		const action = isUpdate ? 'Updating' : 'Creating';
 		console.log(
-			`🚀 Creating package "${packageDefinition.name}" in Domo instance...`
+			`🚀 ${action} package "${packageDefinition.name}" in Domo instance...`
 		);
 
 		try {
@@ -939,7 +1091,9 @@ class DomoPackageCreator {
 			try {
 				const data = await response.json();
 				console.log(
-					`✅ Package "${packageDefinition.name}" created successfully!`
+					`✅ Package "${packageDefinition.name}" ${
+						isUpdate ? 'updated' : 'created'
+					} successfully!`
 				);
 				console.log(`📦 Package ID: ${data.packageId || data.id || 'Unknown'}`);
 				return data;
@@ -947,7 +1101,9 @@ class DomoPackageCreator {
 				// Response might not be JSON
 				const text = await response.text();
 				console.log(
-					`✅ Package "${packageDefinition.name}" created successfully (response not JSON)`
+					`✅ Package "${packageDefinition.name}" ${
+						isUpdate ? 'updated' : 'created'
+					} successfully (response not JSON)`
 				);
 				return { id: 'unknown', packageId: 'unknown', response: text };
 			}
@@ -956,12 +1112,12 @@ class DomoPackageCreator {
 		}
 	}
 
-	async deployPackageVersion(packageId, packageName) {
-		console.log(`🚀 Deploying package "${packageName}" version 1.0.0...`);
+	async deployPackageVersion(packageId, packageName, version = '1.0.0') {
+		console.log(`🚀 Deploying package "${packageName}" version ${version}...`);
 
 		try {
 			const response = await fetch(
-				`${this.baseUrl}/api/codeengine/v2/packages/${packageId}/versions/1.0.0/release`,
+				`${this.baseUrl}/api/codeengine/v2/packages/${packageId}/versions/${version}/release`,
 				{
 					method: 'POST',
 					headers: {
@@ -978,7 +1134,7 @@ class DomoPackageCreator {
 			}
 
 			console.log(
-				`✅ Package "${packageName}" version 1.0.0 deployed successfully!`
+				`✅ Package "${packageName}" version ${version} deployed successfully!`
 			);
 		} catch (error) {
 			throw new Error(`Failed to deploy package: ${error.message}`);
@@ -988,24 +1144,54 @@ class DomoPackageCreator {
 	async createSinglePackage(
 		filename,
 		logDatasetId = null,
-		domostatsScheduledReportsDatasetId = null
+		domostatsScheduledReportsDatasetId = null,
+		currentUserId = null
 	) {
 		const packageDefinition = await this.getPackageDefinition(filename);
+		const packageName = this.generateDisplayName(filename);
+
+		// Search for existing package
+		const existingPackageId = await this.searchForExistingPackage(
+			packageName,
+			currentUserId
+		);
+
+		let version = '1.0.0';
+		let isUpdate = false;
+
+		if (existingPackageId) {
+			// Get the latest version and increment it
+			const latestVersion = await this.getPackageLatestVersion(
+				existingPackageId
+			);
+			version = this.incrementVersion(latestVersion);
+			isUpdate = true;
+		}
+
 		const preparedPackage = this.preparePackage(
 			packageDefinition,
 			filename,
 			logDatasetId,
-			domostatsScheduledReportsDatasetId
+			domostatsScheduledReportsDatasetId,
+			existingPackageId,
+			version
 		);
-		const response = await this.createPackageInDomo(preparedPackage);
+
+		const response = await this.createPackageInDomo(preparedPackage, isUpdate);
 
 		// Deploy the package version
-		const packageId = response.packageId || response.id;
+		const packageId = existingPackageId || response.packageId || response.id;
 		if (packageId && packageId !== 'unknown') {
-			await this.deployPackageVersion(packageId, preparedPackage.name);
+			await this.deployPackageVersion(packageId, preparedPackage.name, version);
 		}
 
-		return response;
+		// Return response with version information
+		return {
+			...response,
+			packageId: packageId,
+			version: version,
+			isUpdate: isUpdate
+		};
 	}
 
 	displaySuccess(packages = [], workflowInfo = null) {
@@ -1013,13 +1199,27 @@ class DomoPackageCreator {
 		console.log('=======================');
 
 		if (packages.length === 1) {
+			const action = packages[0].isUpdate ? 'updated' : 'created';
 			console.log(
-				'Your Domo Code Engine Package has been successfully created.'
+				`Your Domo Code Engine Package has been successfully ${action}.`
 			);
-		} else {
-			console.log(
-				`${packages.length} Domo Code Engine Packages have been successfully created.`
-			);
+		} else if (packages.length > 1) {
+			const updatedCount = packages.filter((p) => p.isUpdate).length;
+			const createdCount = packages.length - updatedCount;
+
+			if (updatedCount > 0 && createdCount > 0) {
+				console.log(
+					`${createdCount} package(s) created and ${updatedCount} package(s) updated successfully.`
+				);
+			} else if (updatedCount > 0) {
+				console.log(
+					`${packages.length} Domo Code Engine Package(s) have been successfully updated.`
+				);
+			} else {
+				console.log(
+					`${packages.length} Domo Code Engine Package(s) have been successfully created.`
+				);
+			}
 		}
 
 		if (workflowInfo) {
@@ -1029,12 +1229,15 @@ class DomoPackageCreator {
 		console.log(`\n🌐 Domo Instance: ${this.baseUrl}`);
 
 		if (packages.length > 0) {
-			console.log('\n📦 Created Packages:');
+			console.log('\n📦 Package Details:');
 			packages.forEach((pkg, index) => {
 				const packageId = pkg.packageId || pkg.id;
 				const name = pkg.name || `Package ${index + 1}`;
-				console.log(`   ${index + 1}. ${name}`);
+				const action = pkg.isUpdate ? 'Updated' : 'Created';
+				const version = pkg.version || '1.0.0';
+				console.log(`   ${index + 1}. ${name} (${action})`);
 				console.log(`      - Package ID: ${packageId || 'Unknown'}`);
+				console.log(`      - Version: ${version}`);
 				if (packageId && packageId !== 'unknown') {
 					console.log(`      - URL: ${this.baseUrl}/codeengine/${packageId}`);
 				}
@@ -1052,9 +1255,11 @@ class DomoPackageCreator {
 		}
 
 		console.log('\n📖 Next steps:');
-		console.log('   1. Test the package functions');
+		console.log(
+			'   1. Update the Send Email to MajorDomo step of the workflow. Replace the cardId and column placeholders in the body to work with a card built on the log dataset in your instance'
+		);
 		if (workflowInfo) {
-			console.log('   2. Test the workflow with sample data');
+			console.log("   2. Once you're satisfied with the workflow, deploy it");
 			console.log('   3. Configure workflow triggers and notifications');
 		}
 	}
@@ -1062,6 +1267,9 @@ class DomoPackageCreator {
 	async run() {
 		try {
 			await this.getUserInputs();
+
+			// Get current user ID first (needed for package search)
+			const currentUserId = await this.getCurrentUserId();
 
 			// Create the log dataset first
 			const logDatasetId = await this.createLogDataset();
@@ -1087,7 +1295,8 @@ class DomoPackageCreator {
 							: null,
 						filename.includes('majordomo-user-offboarding')
 							? domostatsScheduledReportsDatasetId
-							: null
+							: null,
+						currentUserId
 					);
 					packages.push(packageResponse);
 
@@ -1095,12 +1304,12 @@ class DomoPackageCreator {
 					if (filename.includes('majordomo-user-offboarding')) {
 						packageMappings['d5c46aaa-963f-4e01-a84a-f89ccea6465a'] = {
 							id: packageResponse.packageId || packageResponse.id,
-							version: '1.0.0'
+							version: packageResponse.version || '1.0.0'
 						};
 					} else if (filename.includes('domo-product-apis-supplemental')) {
 						packageMappings['3a08d004-f80c-4d44-879f-5b0319968fd1'] = {
 							id: packageResponse.packageId || packageResponse.id,
-							version: '1.0.0'
+							version: packageResponse.version || '1.0.0'
 						};
 					}
 				} catch (error) {
