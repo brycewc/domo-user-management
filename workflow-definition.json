@@ -1060,7 +1060,7 @@
                     "isList": false
                   },
                   {
-                    "text": " was deleted from domo.domo as they are no longer employed by Domo. All their assets (e.g., Cards, DataSets, DataFlows, etc.) in domo.domo have been transferred to you. You can review what was transferred here: https://domo.domo.com/kpis/details/1212529677. We recommend you spend time deleting any assets that are no longer needed and transferring assets to more appropriate users if applicable. ",
+                    "text": " was deleted from domo.domo as they are no longer employed. All their assets (e.g., Cards, DataSets, DataFlows, etc.) in domo.domo have been transferred to you. You can review what was transferred here: https://domo.domo.com/kpis/details/1212529677. We recommend you spend time deleting any assets that are no longer needed and transferring assets to more appropriate users if applicable. ",
                     "bold": false,
                     "italic": false,
                     "underlined": false,
@@ -1185,7 +1185,7 @@
         "selectedTaskDescription": "Send a stylized email to a person entity"
       },
       "style": {
-        "zIndex": 3,
+        "zIndex": 4,
         "outline": "none"
       },
       "index": 12,
@@ -3307,7 +3307,7 @@
         "title": ""
       },
       "style": {
-        "zIndex": 4
+        "zIndex": 5
       },
       "index": 39,
       "arrowHeadType": "arrow",

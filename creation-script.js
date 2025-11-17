@@ -295,13 +295,21 @@ class DomoPackageCreator {
 		const instanceDomain = this.baseUrl
 			.replace('https://', '')
 			.replace('.domo.com', '');
-		console.log(`🔄 Updating Domo instance URL to: ${this.baseUrl}`);
+		console.log(
+			`🔄 Updating domo.domo instance references to: ${instanceDomain}`
+		);
 		const domoUrlRegex = new RegExp('https://domo\\.domo\\.com', 'g');
 		workflowString = workflowString.replace(domoUrlRegex, this.baseUrl);
 
+		// Replace plain text references to domo.domo (not part of URLs) with instance name
+		const domoTextRegex = new RegExp('\\bdomo\\.domo\\b', 'g');
+		workflowString = workflowString.replace(domoTextRegex, instanceDomain);
+
 		// Replace hardcoded card ID (/604087349) with string literal /cardId
-		console.log(`🔄 Replacing specific card ID with /cardId placeholder`);
-		const cardIdRegex = new RegExp('/604087349', 'g');
+		console.log(
+			`🔄 Replacing specific card IDs with /cardId placeholder in email bodies`
+		);
+		const cardIdRegex = new RegExp('/604087349|/1212529677', 'g');
 		workflowString = workflowString.replace(cardIdRegex, '/cardId');
 
 		const updatedWorkflow = JSON.parse(workflowString);
@@ -312,16 +320,135 @@ class DomoPackageCreator {
 		return updatedWorkflow;
 	}
 
-	async createWorkflow(packageMappings) {
-		console.log('🔄 Creating MajorDomo User Offboarding workflow...');
+	async searchForExistingWorkflow(workflowName, currentUserId) {
+		console.log(`🔍 Searching for existing workflow "${workflowName}"...`);
 
 		try {
-			// Step 1: Get current user ID
-			const currentUserId = await this.getCurrentUserId();
+			const response = await fetch(`${this.baseUrl}/api/search/v1/query`, {
+				method: 'POST',
+				headers: {
+					'X-Domo-Developer-Token': this.accessToken,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					query: workflowName,
+					entityList: [['workflow_model']],
+					count: 1000,
+					offset: 0,
+					sort: {
+						fieldSorts: [
+							{
+								field: 'last_modified',
+								sortOrder: 'DESC'
+							}
+						],
+						isRelevance: false
+					},
+					filters: [
+						{
+							facetType: 'user',
+							filterType: 'term',
+							field: 'owned_by_id',
+							value: `${currentUserId}:USER`
+						}
+					],
+					useEntities: false,
+					combineResults: true,
+					facetValueLimit: 1000,
+					hideSearchObjects: true
+				})
+			});
 
-			// Step 2: Create workflow model
-			const createResponse = await fetch(
-				`${this.baseUrl}/api/workflow/v2/models`,
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.log(
+					`⚠️ Workflow search API error: ${response.status} ${errorText}`
+				);
+				return null;
+			}
+
+			const data = await response.json();
+
+			if (
+				data.searchResultsMap &&
+				data.searchResultsMap.workflow_model &&
+				data.searchResultsMap.workflow_model.length > 0
+			) {
+				// Find exact match by name
+				const exactMatch = data.searchResultsMap.workflow_model.find(
+					(wf) => wf.name === workflowName
+				);
+
+				if (exactMatch) {
+					console.log(`✅ Found existing workflow with ID: ${exactMatch.uuid}`);
+					return exactMatch.uuid;
+				}
+			}
+
+			console.log('▶️ No existing workflow found');
+			return null;
+		} catch (error) {
+			console.log(`⚠️ Error searching for existing workflow: ${error.message}`);
+			return null;
+		}
+	}
+
+	async getWorkflowLatestVersion(workflowId) {
+		console.log(`🔍 Getting latest version for workflow ${workflowId}...`);
+
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/api/workflow/v1/models/${workflowId}`,
+				{
+					method: 'GET',
+					headers: {
+						'X-Domo-Developer-Token': this.accessToken,
+						'Content-Type': 'application/json'
+					}
+				}
+			);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(
+					`Failed to get workflow versions: ${response.status} ${errorText}`
+				);
+			}
+
+			const data = await response.json();
+
+			if (data.versions && data.versions.length > 0) {
+				// Find the highest version
+				const versions = data.versions.map((v) => v.version);
+				const highestVersion = versions.sort((a, b) => {
+					const aParts = a.split('.').map(Number);
+					const bParts = b.split('.').map(Number);
+					for (let i = 0; i < 3; i++) {
+						if (aParts[i] !== bParts[i]) {
+							return bParts[i] - aParts[i];
+						}
+					}
+					return 0;
+				})[0];
+
+				console.log(`✅ Latest version found: ${highestVersion}`);
+				return highestVersion;
+			}
+
+			return '1.0.0';
+		} catch (error) {
+			throw new Error(`Failed to get workflow versions: ${error.message}`);
+		}
+	}
+
+	async createWorkflowVersion(workflowId, newVersion, oldVersion) {
+		console.log(
+			`🔄 Creating new workflow version ${newVersion} from ${oldVersion}...`
+		);
+
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/api/workflow/v2/models/${workflowId}/versions`,
 				{
 					method: 'POST',
 					headers: {
@@ -329,29 +456,93 @@ class DomoPackageCreator {
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({
-						name: 'MajorDomo User Offboarding',
+						version: newVersion,
 						description:
-							"Automatically deletes a user's sessions, transfers their content to a new owner, records what was transferred, then deletes the user.",
-						versions: [
-							{
-								version: '1.0.0'
-							}
-						]
+							'New version from MajorDomo User Offboarding creation script',
+						fromModel: [workflowId, oldVersion]
 					})
 				}
 			);
 
-			if (!createResponse.ok) {
-				const errorText = await createResponse.text();
+			if (!response.ok) {
+				const errorText = await response.text();
 				throw new Error(
-					`Failed to create workflow: ${createResponse.status} ${errorText}`
+					`Failed to create workflow version: ${response.status} ${errorText}`
 				);
 			}
 
-			const createData = await createResponse.json();
-			const workflowId = createData.id;
+			console.log(`✅ Workflow version ${newVersion} created successfully`);
+		} catch (error) {
+			throw new Error(`Failed to create workflow version: ${error.message}`);
+		}
+	}
 
-			console.log(`✅ Workflow model created with ID: ${workflowId}`);
+	async createWorkflow(packageMappings) {
+		console.log('🔄 Creating MajorDomo User Offboarding workflow...');
+
+		try {
+			// Step 1: Get current user ID
+			const currentUserId = await this.getCurrentUserId();
+
+			// Step 2: Search for existing workflow
+			const workflowName = 'MajorDomo User Offboarding';
+			const existingWorkflowId = await this.searchForExistingWorkflow(
+				workflowName,
+				currentUserId
+			);
+
+			let workflowId;
+			let version;
+			let isUpdate = false;
+
+			if (existingWorkflowId) {
+				// Workflow exists, get latest version and create new version
+				workflowId = existingWorkflowId;
+				isUpdate = true;
+
+				const latestVersion = await this.getWorkflowLatestVersion(workflowId);
+				version = this.incrementVersion(latestVersion);
+
+				await this.createWorkflowVersion(workflowId, version, latestVersion);
+				console.log(
+					`✅ Existing workflow found, new version ${version} created`
+				);
+			} else {
+				// Create new workflow model
+				const createResponse = await fetch(
+					`${this.baseUrl}/api/workflow/v2/models`,
+					{
+						method: 'POST',
+						headers: {
+							'X-Domo-Developer-Token': this.accessToken,
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							name: workflowName,
+							description:
+								"Automatically deletes a user's sessions, transfers their content to a new owner, records what was transferred, then deletes the user.",
+							versions: [
+								{
+									version: '1.0.0'
+								}
+							]
+						})
+					}
+				);
+
+				if (!createResponse.ok) {
+					const errorText = await createResponse.text();
+					throw new Error(
+						`Failed to create workflow: ${createResponse.status} ${errorText}`
+					);
+				}
+
+				const createData = await createResponse.json();
+				workflowId = createData.id;
+				version = '1.0.0';
+
+				console.log(`✅ Workflow model created with ID: ${workflowId}`);
+			}
 
 			// Step 3: Get and prepare workflow definition
 			const workflowDefinition = await this.getWorkflowDefinition();
@@ -363,7 +554,7 @@ class DomoPackageCreator {
 
 			// Step 4: Update workflow version with full definition
 			const updateResponse = await fetch(
-				`${this.baseUrl}/api/workflow/v2/models/${workflowId}/versions/1.0.0/definition`,
+				`${this.baseUrl}/api/workflow/v2/models/${workflowId}/versions/${version}/definition`,
 				{
 					method: 'PUT',
 					headers: {
@@ -385,8 +576,9 @@ class DomoPackageCreator {
 
 			return {
 				id: workflowId,
-				name: 'MajorDomo User Offboarding',
-				version: '1.0.0'
+				name: workflowName,
+				version: version,
+				isUpdate: isUpdate
 			};
 		} catch (error) {
 			throw new Error(`Failed to create workflow: ${error.message}`);
@@ -1223,7 +1415,10 @@ class DomoPackageCreator {
 		}
 
 		if (workflowInfo) {
-			console.log('The MajorDomo User Offboarding Workflow has been created.');
+			const action = workflowInfo.isUpdate ? 'updated' : 'created';
+			console.log(
+				`The MajorDomo User Offboarding Workflow has been ${action}.`
+			);
 		}
 
 		console.log(`\n🌐 Domo Instance: ${this.baseUrl}`);
@@ -1245,7 +1440,8 @@ class DomoPackageCreator {
 		}
 
 		if (workflowInfo) {
-			console.log('\n🔄 Created Workflow:');
+			const action = workflowInfo.isUpdate ? 'Updated' : 'Created';
+			console.log(`\n🔄 ${action} Workflow:`);
 			console.log(`   - Name: ${workflowInfo.name}`);
 			console.log(`   - Workflow ID: ${workflowInfo.id}`);
 			console.log(`   - Version: ${workflowInfo.version}`);
